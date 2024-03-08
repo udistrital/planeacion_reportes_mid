@@ -1,0 +1,42 @@
+swagger: "2.0"
+info:
+  title: beego Test API
+  description: beego has a very cool tools to autogenerate documents for your API
+  version: 1.0.0
+  termsOfService: http://beego.me/
+  contact:
+    email: astaxie@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+basePath: /v1
+paths:
+  /default/get/{id}:
+    get:
+      tags:
+      - default
+      description: create Get
+      operationId: MainController.Get
+      parameters:
+      - in: query
+        name: id
+        description: id
+        required: true
+        type: string
+      responses:
+        "201":
+          description: ""
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/models.Default'
+        "403":
+          description: body is empty
+definitions:
+  models.Default:
+    title: Default
+    type: object
+    properties:
+      Id:
+        type: integer
+        format: int64
