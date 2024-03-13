@@ -11,32 +11,152 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 basePath: /v1
 paths:
-  /default/get/{id}:
-    get:
+  /reportes/desagregado:
+    post:
       tags:
-      - default
-      description: create Get
-      operationId: MainController.Get
+      - reportes
+      description: post Desagregado
+      operationId: ReportesController.Desagregado
       parameters:
-      - in: query
-        name: id
-        description: id
+      - in: body
+        name: body
+        description: body for Plan content
+        required: true
+        schema:
+          $ref: '#/definitions/{}'
+      responses:
+        "201":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.Reportes'
+        "403":
+          description: :plan_id is empty
+  /reportes/necesidades/{nombre}:
+    post:
+      tags:
+      - reportes
+      description: post Necesidades
+      operationId: ReportesController.Necesidades
+      parameters:
+      - in: body
+        name: body
+        description: body for Plan content
+        required: true
+        schema:
+          $ref: '#/definitions/{}'
+      - in: path
+        name: nombre
+        description: The key for staticblock
         required: true
         type: string
       responses:
         "201":
           description: ""
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/models.Default'
+            $ref: '#/definitions/models.Reportes'
         "403":
-          description: body is empty
+          description: :plan_id is empty
+  /reportes/plan_anual/{nombre}:
+    post:
+      tags:
+      - reportes
+      description: post PlanAccionAnual
+      operationId: ReportesController.PlanAccionAnual
+      parameters:
+      - in: body
+        name: body
+        description: body for Plan content
+        required: true
+        schema:
+          $ref: '#/definitions/{}'
+      - in: path
+        name: nombre
+        description: The key for staticblock
+        required: true
+        type: string
+      responses:
+        "201":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.Reportes'
+        "403":
+          description: :plan_id is empty
+  /reportes/plan_anual_evaluacion/{nombre}:
+    post:
+      tags:
+      - reportes
+      description: post PlanAccionEvaluacion
+      operationId: ReportesController.PlanAccionEvaluacion
+      parameters:
+      - in: body
+        name: body
+        description: body for Plan content
+        required: true
+        schema:
+          $ref: '#/definitions/{}'
+      - in: path
+        name: nombre
+        description: The key for staticblock
+        required: true
+        type: string
+      responses:
+        "201":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.Reportes'
+        "403":
+          description: :nombre is empty
+  /reportes/plan_anual_general/{nombre}:
+    post:
+      tags:
+      - reportes
+      description: post PlanAccionAnualGeneral
+      operationId: ReportesController.PlanAccionAnualGeneral
+      parameters:
+      - in: body
+        name: body
+        description: body for Plan content
+        required: true
+        schema:
+          $ref: '#/definitions/{}'
+      - in: path
+        name: nombre
+        description: The key for staticblock
+        required: true
+        type: string
+      responses:
+        "201":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.Reportes'
+        "403":
+          description: :plan_id is empty
+  /reportes/validar_reporte:
+    post:
+      tags:
+      - reportes
+      description: post ValidarReporte
+      operationId: ReportesController.ValidarReporte
+      parameters:
+      - in: body
+        name: body
+        description: body for Plan content
+        required: true
+        schema:
+          $ref: '#/definitions/{}'
+      responses:
+        "201":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.Reportes'
 definitions:
-  models.Default:
-    title: Default
+  '{}':
+    title: '{}'
     type: object
-    properties:
-      Id:
-        type: integer
-        format: int64
+  models.Reportes:
+    title: Reportes
+    type: object
+tags:
+- name: reportes
+  description: |
+    ReportesController operations for Reportes
