@@ -84,7 +84,7 @@
                 }
             }
         },
-        "/reportes/plan_anual/{nombre}": {
+        "/reportes/plan-anual/{nombre}": {
             "post": {
                 "tags": [
                     "reportes"
@@ -122,7 +122,7 @@
                 }
             }
         },
-        "/reportes/plan_anual_evaluacion/{nombre}": {
+        "/reportes/plan-anual-evaluacion/{nombre}": {
             "post": {
                 "tags": [
                     "reportes"
@@ -160,7 +160,7 @@
                 }
             }
         },
-        "/reportes/plan_anual_general/{nombre}": {
+        "/reportes/plan-anual-general/{nombre}": {
             "post": {
                 "tags": [
                     "reportes"
@@ -198,7 +198,7 @@
                 }
             }
         },
-        "/reportes/validar_reporte": {
+        "/reportes/validacion": {
             "post": {
                 "tags": [
                     "reportes"

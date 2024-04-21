@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"encoding/json"
-
 	"github.com/astaxie/beego"
-	reporteshelper "github.com/udistrital/planeacion_reportes_mid/helpers"
-	"github.com/udistrital/utils_oas/request"
+	"github.com/udistrital/planeacion_reportes_mid/services"
+	"github.com/udistrital/utils_oas/errorhandler"
+	"github.com/udistrital/utils_oas/requestresponse"
 )
 
 // ReportesController operations for Reportes
@@ -21,6 +20,7 @@ func (c *ReportesController) URLMapping() {
 	c.Mapping("PlanAccionAnualGeneral", c.PlanAccionAnualGeneral)
 	c.Mapping("Necesidades", c.Necesidades)
 	c.Mapping("PlanAccionEvaluacion", c.PlanAccionEvaluacion)
+
 }
 
 // ReportesController ...
@@ -28,24 +28,22 @@ func (c *ReportesController) URLMapping() {
 // @Description post ValidarReporte
 // @Param	body		body 	{}	true		"body for Plan content"
 // @Success 201 {object} models.Reportes
-// @router /validar_reporte [post]
+// @router /validacion [post]
 func (c *ReportesController) ValidarReporte() {
-	defer request.ErrorController(c.Controller, "ReportesController")
+	defer errorhandler.HandlePanic(&c.Controller)
 
-	if v, e := request.ValidarBody(c.Ctx.Input.RequestBody); !v || e != nil {
-		panic(map[string]interface{}{"funcion": "ValidarReporte", "err": request.ErrorBody, "status": "400"})
-	}
+	data := c.Ctx.Input.RequestBody
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		panic(map[string]interface{}{"funcion": "ValidarReporte", "err": err.Error(), "status": "400"})
-	}
+	resultado, err := services.ValidarReporte(data)
 
-	if data, err := reporteshelper.Validar(body); err == nil {
-		c.Data["json"] = map[string]interface{}{"Success": true, "Status": "201", "Message": "Successful", "Data": data}
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 	} else {
-		panic(map[string]interface{}{"funcion": "ValidarReporte", "err": err, "status": "400"})
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
 	}
+
 	c.ServeJSON()
 }
 
@@ -57,21 +55,18 @@ func (c *ReportesController) ValidarReporte() {
 // @Failure 403 :plan_id is empty
 // @router /desagregado [post]
 func (c *ReportesController) Desagregado() {
-	defer request.ErrorController(c.Controller, "ReportesController")
+	defer errorhandler.HandlePanic(&c.Controller)
 
-	if v, e := request.ValidarBody(c.Ctx.Input.RequestBody); !v || e != nil {
-		panic(map[string]interface{}{"funcion": "Desagregado", "err": request.ErrorBody, "status": "400"})
-	}
+	data := c.Ctx.Input.RequestBody
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		panic(map[string]interface{}{"funcion": "Desagregado", "err": err.Error(), "status": "400"})
-	}
+	resultado, err := services.Desagregado(data)
 
-	if data, err := reporteshelper.ProcesarDesagregado(body); err == nil {
-		c.Data["json"] = map[string]interface{}{"Success": true, "Status": "201", "Message": "Successful", "Data": data}
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 	} else {
-		panic(map[string]interface{}{"funcion": "Desagregado", "err": err, "status": "400"})
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
 	}
 	c.ServeJSON()
 }
@@ -83,25 +78,21 @@ func (c *ReportesController) Desagregado() {
 // @Param	nombre		path 	string	true		"The key for staticblock"
 // @Success 201 {object} models.Reportes
 // @Failure 403 :plan_id is empty
-// @router /plan_anual/:nombre [post]
+// @router /plan-anual/:nombre [post]
 func (c *ReportesController) PlanAccionAnual() {
-	defer request.ErrorController(c.Controller, "ReportesController")
+	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
+	data := c.Ctx.Input.RequestBody
 
-	if v, e := request.ValidarBody(c.Ctx.Input.RequestBody); !v || e != nil {
-		panic(map[string]interface{}{"funcion": "PlanAccionAnual", "err": request.ErrorBody, "status": "400"})
-	}
+	resultado, err := services.PlanAccionAnual(nombre, data)
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		panic(map[string]interface{}{"funcion": "PlanAccionAnual", "err": err.Error(), "status": "400"})
-	}
-
-	if data, err := reporteshelper.ProcesarPlanAccionAnual(body, nombre); err == nil {
-		c.Data["json"] = map[string]interface{}{"Success": true, "Status": "201", "Message": "Successful", "Data": data}
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 	} else {
-		panic(map[string]interface{}{"funcion": "PlanAccionAnual", "err": err, "status": "400"})
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
 	}
 	c.ServeJSON()
 }
@@ -113,25 +104,21 @@ func (c *ReportesController) PlanAccionAnual() {
 // @Param	nombre		path 	string	true		"The key for staticblock"
 // @Success 201 {object} models.Reportes
 // @Failure 403 :plan_id is empty
-// @router /plan_anual_general/:nombre [post]
+// @router /plan-anual-general/:nombre [post]
 func (c *ReportesController) PlanAccionAnualGeneral() {
-	defer request.ErrorController(c.Controller, "ReportesController")
+	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
+	data := c.Ctx.Input.RequestBody
 
-	if v, e := request.ValidarBody(c.Ctx.Input.RequestBody); !v || e != nil {
-		panic(map[string]interface{}{"funcion": "PlanAccionAnualGeneral", "err": request.ErrorBody, "status": "400"})
-	}
+	resultado, err := services.PlanAccionAnualGeneral(nombre, data)
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		panic(map[string]interface{}{"funcion": "PlanAccionAnualGeneral", "err": err.Error(), "status": "400"})
-	}
-
-	if data, err := reporteshelper.ProcesarPlanAccionAnualGeneral(body, nombre); err == nil {
-		c.Data["json"] = map[string]interface{}{"Success": true, "Status": "201", "Message": "Successful", "Data": data}
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 	} else {
-		panic(map[string]interface{}{"funcion": "PlanAccionAnualGeneral", "err": err, "status": "400"})
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
 	}
 	c.ServeJSON()
 }
@@ -145,23 +132,19 @@ func (c *ReportesController) PlanAccionAnualGeneral() {
 // @Failure 403 :plan_id is empty
 // @router /necesidades/:nombre [post]
 func (c *ReportesController) Necesidades() {
-	defer request.ErrorController(c.Controller, "ReportesController")
+	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
+	data := c.Ctx.Input.RequestBody
 
-	if v, e := request.ValidarBody(c.Ctx.Input.RequestBody); !v || e != nil {
-		panic(map[string]interface{}{"funcion": "Necesidades", "err": request.ErrorBody, "status": "400"})
-	}
+	resultado, err := services.Necesidades(nombre, data)
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		panic(map[string]interface{}{"funcion": "Necesidades", "err": err.Error(), "status": "400"})
-	}
-
-	if data, err := reporteshelper.ProcesarNecesidades(body, nombre); err == nil {
-		c.Data["json"] = map[string]interface{}{"Success": true, "Status": "201", "Message": "Successful", "Data": data}
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 	} else {
-		panic(map[string]interface{}{"funcion": "Necesidades", "err": err, "status": "400"})
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
 	}
 	c.ServeJSON()
 }
@@ -173,25 +156,21 @@ func (c *ReportesController) Necesidades() {
 // @Param	nombre		path 	string	true		"The key for staticblock"
 // @Success 201 {object} models.Reportes
 // @Failure 403 :nombre is empty
-// @router /plan_anual_evaluacion/:nombre [post]
+// @router /plan-anual-evaluacion/:nombre [post]
 func (c *ReportesController) PlanAccionEvaluacion() {
-	defer request.ErrorController(c.Controller, "ReportesController")
+	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
+	data := c.Ctx.Input.RequestBody
 
-	if v, e := request.ValidarBody(c.Ctx.Input.RequestBody); !v || e != nil {
-		panic(map[string]interface{}{"funcion": "PlanAccionEvaluacion", "err": request.ErrorBody, "status": "400"})
-	}
+	resultado, err := services.PlanAccionEvaluacion(nombre, data)
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		panic(map[string]interface{}{"funcion": "PlanAccionEvaluacion", "err": err.Error(), "status": "400"})
-	}
-
-	if data, err := reporteshelper.ProcesarPlanAccionEvaluacion(body, nombre); err == nil {
-		c.Data["json"] = map[string]interface{}{"Success": true, "Status": "201", "Message": "Successful", "Data": data}
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 	} else {
-		panic(map[string]interface{}{"funcion": "PlanAccionEvaluacion", "err": err, "status": "400"})
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
 	}
 	c.ServeJSON()
 }
