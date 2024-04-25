@@ -15,7 +15,7 @@
     },
     "basePath": "/v1",
     "paths": {
-        "/reportes/desagregado": {
+        "/desagregado": {
             "post": {
                 "tags": [
                     "reportes"
@@ -46,7 +46,7 @@
                 }
             }
         },
-        "/reportes/necesidades/{nombre}": {
+        "/necesidades/{nombre}": {
             "post": {
                 "tags": [
                     "reportes"
@@ -84,7 +84,7 @@
                 }
             }
         },
-        "/reportes/plan-anual/{nombre}": {
+        "/plan-anual/{nombre}": {
             "post": {
                 "tags": [
                     "reportes"
@@ -122,7 +122,7 @@
                 }
             }
         },
-        "/reportes/plan-anual-evaluacion/{nombre}": {
+        "/plan-anual-evaluacion/{nombre}": {
             "post": {
                 "tags": [
                     "reportes"
@@ -160,7 +160,7 @@
                 }
             }
         },
-        "/reportes/plan-anual-general/{nombre}": {
+        "/plan-anual-general/{nombre}": {
             "post": {
                 "tags": [
                     "reportes"
@@ -198,7 +198,7 @@
                 }
             }
         },
-        "/reportes/validacion": {
+        "/validacion": {
             "post": {
                 "tags": [
                     "reportes"
