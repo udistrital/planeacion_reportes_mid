@@ -16,7 +16,7 @@ func TestValidarReporte(t *testing.T) {
 	}
 	`)
 
-	if response, err := http.Post("http://localhost:8080/v1/reportes/validacion", "application/json", bytes.NewBuffer(body)); err == nil {
+	if response, err := http.Post("http://localhost:8080/v1/validacion", "application/json", bytes.NewBuffer(body)); err == nil {
 		if response.StatusCode != 200 {
 			t.Error("Error TestValidarReporte Se esperaba 200 y se obtuvo", response.StatusCode)
 			t.Fail()
@@ -31,7 +31,7 @@ func TestValidarReporte(t *testing.T) {
 func TestDesagregado(t *testing.T) {
 	body := []byte(`{}`)
 
-	if response, err := http.Post("http://localhost:8080/v1/reportes/desagregado", "application/json", bytes.NewBuffer(body)); err == nil {
+	if response, err := http.Post("http://localhost:8080/v1/desagregado", "application/json", bytes.NewBuffer(body)); err == nil {
 		if response.StatusCode != 200 {
 			t.Error("Error TestDesagregado Se esperaba 200 y se obtuvo", response.StatusCode)
 			t.Fail()
@@ -53,7 +53,7 @@ func TestPlanAccionAnual(t *testing.T) {
 	}
 	`)
 
-	if response, err := http.Post("http://localhost:8080/v1/reportes/plan-anual/Seguimiento%20PruebaSure", "application/json", bytes.NewBuffer(body)); err == nil {
+	if response, err := http.Post("http://localhost:8080/v1/plan-anual/Seguimiento%20PruebaSure", "application/json", bytes.NewBuffer(body)); err == nil {
 		if response.StatusCode != 200 {
 			t.Error("Error TestPlanAccionAnual Se esperaba 200 y se obtuvo", response.StatusCode)
 			t.Fail()
@@ -73,7 +73,7 @@ func TestPlanAccionAnualGeneral(t *testing.T) {
 	}	
 	`)
 
-	if response, err := http.Post("http://localhost:8080/v1/reportes/plan-anual-general/Seguimiento%20PruebaSure", "application/json", bytes.NewBuffer(body)); err == nil {
+	if response, err := http.Post("http://localhost:8080/v1/plan-anual-general/Seguimiento%20PruebaSure", "application/json", bytes.NewBuffer(body)); err == nil {
 		if response.StatusCode != 200 {
 			t.Error("Error TestPlanAccionAnualGeneral Se esperaba 200 y se obtuvo", response.StatusCode)
 			t.Fail()
@@ -94,7 +94,7 @@ func TestNecesidades(t *testing.T) {
 	}	
 	`)
 
-	if response, err := http.Post("http://localhost:8080/v1/reportes/necesidades/Plan%20de%20Acci%C3%B3n%20de%20Funcionamiento%202022", "application/json", bytes.NewBuffer(body)); err == nil {
+	if response, err := http.Post("http://localhost:8080/v1/necesidades/Plan%20de%20Acci%C3%B3n%20de%20Funcionamiento%202022", "application/json", bytes.NewBuffer(body)); err == nil {
 		if response.StatusCode != 200 {
 			t.Error("Error TestNecesidades Se esperaba 200 y se obtuvo", response.StatusCode)
 			t.Fail()
@@ -116,7 +116,7 @@ func TestPlanAccionEvaluacion(t *testing.T) {
 	
 	`)
 
-	if response, err := http.Post("http://localhost:8080/v1/reportes/plan-anual-evaluacion/Plan%20de%20acci%C3%B3n%202023%20Prod", "application/json", bytes.NewBuffer(body)); err == nil {
+	if response, err := http.Post("http://localhost:8080/v1/plan-anual-evaluacion/Plan%20de%20acci%C3%B3n%202023%20Prod", "application/json", bytes.NewBuffer(body)); err == nil {
 		if response.StatusCode != 200 {
 			t.Error("Error TestPlanAccionEvaluacion Se esperaba 200 y se obtuvo", response.StatusCode)
 			t.Fail()
