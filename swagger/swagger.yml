@@ -11,7 +11,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 basePath: /v1
 paths:
-  /reportes/desagregado:
+  /desagregado:
     post:
       tags:
       - reportes
@@ -31,7 +31,7 @@ paths:
             $ref: '#/definitions/models.Reportes'
         "403":
           description: :plan_id is empty
-  /reportes/necesidades/{nombre}:
+  /necesidades/{nombre}:
     post:
       tags:
       - reportes
@@ -56,7 +56,7 @@ paths:
             $ref: '#/definitions/models.Reportes'
         "403":
           description: :plan_id is empty
-  /reportes/plan-anual/{nombre}:
+  /plan-anual/{nombre}:
     post:
       tags:
       - reportes
@@ -81,7 +81,7 @@ paths:
             $ref: '#/definitions/models.Reportes'
         "403":
           description: :plan_id is empty
-  /reportes/plan-anual-evaluacion/{nombre}:
+  /plan-anual-evaluacion/{nombre}:
     post:
       tags:
       - reportes
@@ -106,7 +106,7 @@ paths:
             $ref: '#/definitions/models.Reportes'
         "403":
           description: :nombre is empty
-  /reportes/plan-anual-general/{nombre}:
+  /plan-anual-general/{nombre}:
     post:
       tags:
       - reportes
@@ -131,7 +131,7 @@ paths:
             $ref: '#/definitions/models.Reportes'
         "403":
           description: :plan_id is empty
-  /reportes/validacion:
+  /validacion:
     post:
       tags:
       - reportes
