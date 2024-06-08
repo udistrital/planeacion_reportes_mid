@@ -32,9 +32,9 @@ func (c *ReportesController) URLMapping() {
 func (c *ReportesController) ValidarReporte() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	data := c.Ctx.Input.RequestBody
+	Data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.ValidarReporte(data)
+	resultado, err := services.ValidarReporte(Data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -57,9 +57,9 @@ func (c *ReportesController) ValidarReporte() {
 func (c *ReportesController) Desagregado() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	data := c.Ctx.Input.RequestBody
+	Data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.Desagregado(data)
+	resultado, err := services.Desagregado(Data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -83,9 +83,8 @@ func (c *ReportesController) PlanAccionAnual() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
-	data := c.Ctx.Input.RequestBody
-
-	resultado, err := services.PlanAccionAnual(nombre, data)
+	Data := c.Ctx.Input.RequestBody
+	resultado, err := services.PlanAccionAnual(nombre, Data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -109,9 +108,9 @@ func (c *ReportesController) PlanAccionAnualGeneral() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
-	data := c.Ctx.Input.RequestBody
+	Data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PlanAccionAnualGeneral(nombre, data)
+	resultado, err := services.PlanAccionAnualGeneral(nombre, Data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -135,9 +134,9 @@ func (c *ReportesController) Necesidades() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
-	data := c.Ctx.Input.RequestBody
+	Data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.Necesidades(nombre, data)
+	resultado, err := services.Necesidades(nombre, Data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -161,9 +160,9 @@ func (c *ReportesController) PlanAccionEvaluacion() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
 	nombre := c.Ctx.Input.Param(":nombre")
-	data := c.Ctx.Input.RequestBody
+	Data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PlanAccionEvaluacion(nombre, data)
+	resultado, err := services.PlanAccionEvaluacion(nombre, Data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
