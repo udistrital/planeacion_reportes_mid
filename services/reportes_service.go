@@ -36,7 +36,6 @@ var id_arr []string
 var ids [][]string
 var hijos_key []interface{}
 var hijos_data [][]map[string]interface{}
-var validDataT = []string{}
 var outputError error
 var detallesLlenados bool
 var detalles []map[string]interface{}
@@ -61,18 +60,6 @@ func ValidarReporte(data []byte) (interface{}, error) {
 
 }
 
-func Limpia() {
-	//validDataT = []string{}
-	//ids = [][]string{}
-	//hijos_data = nil
-	//hijos_key = nil
-}
-func Limp() {
-	validDataT = []string{}
-	ids = [][]string{}
-	hijos_data = nil
-	hijos_key = nil
-}
 func Validar(body map[string]interface{}) (res map[string]interface{}, outputError error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -176,14 +163,6 @@ func Validar(body map[string]interface{}) (res map[string]interface{}, outputErr
 	return res, outputError
 }
 
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
 func getIdEstadoAval() (string, error) {
 	var resEstado map[string]interface{}
 	var estado []map[string]interface{}
@@ -1011,8 +990,8 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 								datosArmonizacion := make(map[string]interface{})
 								titulosArmonizacion := make(map[string]interface{})
 
-								Limpia()
-								tree := BuildTreeFa(subgrupos, index)
+								reporteshelper.Limpia()
+								tree := reporteshelper.BuildTreeFa(subgrupos, index)
 								treeDatos := tree[0]
 								treeDatas := tree[1]
 								treeArmo := tree[2]
@@ -1391,42 +1370,6 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 		}
 	}
 	return actividades
-}
-
-func getChildren(children []interface{}, exist bool) (childrenTree []map[string]interface{}) {
-	var res map[string]interface{}
-	var nodo []map[string]interface{}
-
-	for _, child := range children {
-		childStr := child.(string)
-		forkData := make(map[string]interface{})
-		var id string
-		err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo?query=_id:"+childStr+"&fields=nombre,_id,hijos,activo", &res)
-		if err != nil {
-			return
-		}
-		helpers.LimpiezaRespuestaRefactor(res, &nodo)
-		if nodo[0]["activo"] == true {
-			forkData["id"] = nodo[0]["_id"]
-			forkData["nombre"] = nodo[0]["nombre"]
-			id = nodo[0]["_id"].(string)
-
-			if len(nodo[0]["hijos"].([]interface{})) > 0 {
-				aux := getChildren(nodo[0]["hijos"].([]interface{}), true)
-				if len(aux) == 0 {
-					forkData["sub"] = ""
-				} else {
-					forkData["sub"] = aux
-				}
-			}
-
-			childrenTree = append(childrenTree, forkData)
-		}
-		id_arr = append(id_arr, id)
-		Add(id)
-	}
-	ids = append(ids, id_arr)
-	return
 }
 
 func ArbolArmonizacionV2(armonizacion string) []map[string]interface{} {
@@ -2417,7 +2360,7 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 	})
 
 	for planes := 0; planes < len(planesFilter); planes++ {
-		Limpiar()
+		reporteshelper.Limpiar()
 		planesFilterData := planesFilter[planes]
 		plan_id = planesFilterData["_id"].(string)
 		infoReporte := make(map[string]interface{})
@@ -2454,7 +2397,7 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 					datosArmonizacion := make(map[string]interface{})
 					titulosArmonizacion := make(map[string]interface{})
 
-					tree := BuildTreeFa(subgrupos, index)
+					tree := reporteshelper.BuildTreeFa(subgrupos, index)
 					treeDatos := tree[0]
 					treeDatas := tree[1]
 					treeArmo := tree[2]
@@ -2818,18 +2761,6 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 	dataSend["generalData"] = arregloInfoReportes
 	dataSend["excelB64"] = encoded
 	return dataSend, outputError
-}
-
-func Limpiar() {
-	validDataT = []string{}
-	ids = [][]string{}
-	hijos_data = nil
-	hijos_key = nil
-}
-func Add(id string) {
-	if !contains(validDataT, id) {
-		validDataT = append(validDataT, id)
-	}
 }
 
 func ProcesarNecesidades(body map[string]interface{}, nombre string) (dataSend map[string]interface{}, outputError error) {
@@ -4637,65 +4568,4 @@ func convert(valid []string, index string) ([]map[string]interface{}, map[string
 	validadores = append(validadores, forkData)
 	return validadores, armonizacion
 
-}
-
-func BuildTreeFa(hijos []map[string]interface{}, index string) [][]map[string]interface{} {
-	var tree []map[string]interface{}
-	var requeridos []map[string]interface{}
-	armonizacion := make([]map[string]interface{}, 1)
-	var result [][]map[string]interface{}
-	for i := 0; i < len(hijos); i++ {
-		if hijos[i]["activo"] == true {
-			forkData := make(map[string]interface{})
-			var id string
-			forkData["id"] = hijos[i]["_id"]
-			forkData["nombre"] = hijos[i]["nombre"]
-			id = hijos[i]["_id"].(string)
-
-			if len(hijos[i]["hijos"].([]interface{})) > 0 {
-				var aux []map[string]interface{}
-				if len(hijos_key) == 0 {
-					hijos_key = append(hijos_key, hijos[i]["hijos"])
-					hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{}), true))
-					aux = hijos_data[len(hijos_data)-1]
-				} else {
-					flag := false
-					var posicion int
-					for j := 0; j < len(hijos_key); j++ {
-						if reflect.DeepEqual(hijos[i]["hijos"], hijos_key[j]) {
-							flag = true
-							posicion = j
-						}
-					}
-					if !flag {
-						hijos_key = append(hijos_key, hijos[i]["hijos"])
-						hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{}), true))
-						aux = hijos_data[len(hijos_data)-1]
-					} else {
-						aux = hijos_data[posicion]
-						for k := 0; k < len(ids[posicion]); k++ {
-							Add(ids[posicion][k])
-						}
-					}
-				}
-				forkData["sub"] = make([]map[string]interface{}, len(aux))
-				forkData["sub"] = aux
-			} else {
-				forkData["sub"] = ""
-			}
-			tree = append(tree, forkData)
-			Add(id)
-
-		}
-	}
-
-	requeridos, armonizacion[0] = convert(validDataT, index)
-
-	result = append(result, tree)
-	result = append(result, requeridos)
-	result = append(result, armonizacion)
-
-	reporteshelper.LimpiaIds()
-
-	return result
 }

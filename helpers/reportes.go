@@ -38,6 +38,7 @@ var detalles []map[string]interface{}
 var detalles_armonizacion map[string]interface{}
 var ids [][]string
 var id_arr []string
+var validDataT = []string{}
 var detallesLlenados bool
 
 func LimpiarDetalles() {
@@ -48,6 +49,127 @@ func LimpiarDetalles() {
 
 func LimpiaIds() {
 	id_arr = []string{}
+}
+
+func Limpia() {
+	//validDataT = []string{}
+	//ids = [][]string{}
+	//hijos_data = nil
+	//hijos_key = nil
+}
+func Limp() {
+	validDataT = []string{}
+	ids = [][]string{}
+	hijos_data = nil
+	hijos_key = nil
+}
+
+func Limpiar() {
+	validDataT = []string{}
+	ids = [][]string{}
+	hijos_data = nil
+	hijos_key = nil
+}
+func Add(id string) {
+	if !Contains(validDataT, id) {
+		validDataT = append(validDataT, id)
+	}
+}
+
+func BuildTreeFa(hijos []map[string]interface{}, index string) [][]map[string]interface{} {
+	var tree []map[string]interface{}
+	var requeridos []map[string]interface{}
+	armonizacion := make([]map[string]interface{}, 1)
+	var result [][]map[string]interface{}
+	for i := 0; i < len(hijos); i++ {
+		if hijos[i]["activo"] == true {
+			forkData := make(map[string]interface{})
+			var id string
+			forkData["id"] = hijos[i]["_id"]
+			forkData["nombre"] = hijos[i]["nombre"]
+			id = hijos[i]["_id"].(string)
+
+			if len(hijos[i]["hijos"].([]interface{})) > 0 {
+				var aux []map[string]interface{}
+				if len(hijos_key) == 0 {
+					hijos_key = append(hijos_key, hijos[i]["hijos"])
+					hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{}), true))
+					aux = hijos_data[len(hijos_data)-1]
+				} else {
+					flag := false
+					var posicion int
+					for j := 0; j < len(hijos_key); j++ {
+						if reflect.DeepEqual(hijos[i]["hijos"], hijos_key[j]) {
+							flag = true
+							posicion = j
+						}
+					}
+					if !flag {
+						hijos_key = append(hijos_key, hijos[i]["hijos"])
+						hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{}), true))
+						aux = hijos_data[len(hijos_data)-1]
+					} else {
+						aux = hijos_data[posicion]
+						for k := 0; k < len(ids[posicion]); k++ {
+							Add(ids[posicion][k])
+						}
+					}
+				}
+				forkData["sub"] = make([]map[string]interface{}, len(aux))
+				forkData["sub"] = aux
+			} else {
+				forkData["sub"] = ""
+			}
+			tree = append(tree, forkData)
+			Add(id)
+
+		}
+	}
+
+	requeridos, armonizacion[0] = convert(validDataT, index)
+
+	result = append(result, tree)
+	result = append(result, requeridos)
+	result = append(result, armonizacion)
+
+	LimpiaIds()
+
+	return result
+}
+func getChildren(children []interface{}, exist bool) (childrenTree []map[string]interface{}) {
+	var res map[string]interface{}
+	var nodo []map[string]interface{}
+
+	for _, child := range children {
+		childStr := child.(string)
+		forkData := make(map[string]interface{})
+		var id string
+		err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo?query=_id:"+childStr+"&fields=nombre,_id,hijos,activo", &res)
+		if err != nil {
+			return
+		}
+		helpers.LimpiezaRespuestaRefactor(res, &nodo)
+		if nodo[0]["activo"] == true {
+			forkData["id"] = nodo[0]["_id"]
+			forkData["nombre"] = nodo[0]["nombre"]
+			id = nodo[0]["_id"].(string)
+
+			if len(nodo[0]["hijos"].([]interface{})) > 0 {
+				aux := getChildren(nodo[0]["hijos"].([]interface{}), true)
+				if len(aux) == 0 {
+					forkData["sub"] = ""
+				} else {
+					forkData["sub"] = aux
+				}
+			}
+
+			childrenTree = append(childrenTree, forkData)
+		}
+		id_arr = append(id_arr, id)
+		Add(id)
+	}
+	ids = append(ids, id_arr)
+	return
 }
 
 func GetActividades(subgrupo_id string) []map[string]interface{} {
@@ -80,7 +202,7 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 	return actividades
 }
 
-func contains(s []string, e string) bool {
+func Contains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
 			return true
