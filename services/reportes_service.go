@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego"
-	"github.com/udistrital/planeacion_mid/helpers"
 	evaluacionhelper "github.com/udistrital/planeacion_mid/helpers/evaluacionHelper"
 	reporteshelper "github.com/udistrital/planeacion_reportes_mid/helpers"
 	"github.com/udistrital/planeacion_reportes_mid/models"
@@ -1385,7 +1384,7 @@ func ArbolArmonizacionV2(armonizacion string) []map[string]interface{} {
 			var respuesta map[string]interface{}
 			var respuestaSubgrupo map[string]interface{}
 			if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo/"+armonizacionPED[i], &respuesta); err == nil {
-				helpers.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
+				request.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
 
 				if len(respuestaSubgrupo) > 0 {
 					nombre := strings.ToLower(respuestaSubgrupo["nombre"].(string))
@@ -1398,7 +1397,7 @@ func ArbolArmonizacionV2(armonizacion string) []map[string]interface{} {
 					}
 				}
 			} else {
-				panic(map[string]interface{}{"funcion": "GetUnidades", "err": "Error ", "status": "400", "log": err})
+				outputError = errors.New("error al procesar la peticion GetUnidades	" + err.Error())
 			}
 		}
 
@@ -1588,7 +1587,7 @@ func ArbolArmonizacion(armonizacion string) []map[string]interface{} {
 	for i := 0; i < len(armonizacionPED); i++ {
 		var respuestaSubgrupo map[string]interface{}
 		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo/"+armonizacionPED[i], &respuesta); err == nil {
-			helpers.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
+			request.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
 			if len(respuestaSubgrupo) > 0 {
 				nombre := strings.ToLower(respuestaSubgrupo["nombre"].(string))
 				if strings.Contains(nombre, "lineamiento") {
@@ -1602,7 +1601,7 @@ func ArbolArmonizacion(armonizacion string) []map[string]interface{} {
 				}
 			}
 		} else {
-			panic(map[string]interface{}{"funcion": "GetUnidades", "err": "Error ", "status": "400", "log": err})
+			outputError = errors.New("error al procesar la peticion GetUnidades	" + err.Error())
 		}
 	}
 
@@ -1747,7 +1746,7 @@ func ArbolArmonizacionPIV2(armonizacion string) []map[string]interface{} {
 			var respuesta map[string]interface{}
 			var respuestaSubgrupo map[string]interface{}
 			if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo/"+armonizacionPI[i], &respuesta); err == nil {
-				helpers.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
+				request.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
 				if len(respuestaSubgrupo) > 0 {
 					nombre := strings.ToLower(respuestaSubgrupo["nombre"].(string))
 					if (strings.Contains(nombre, "eje") || strings.Contains(nombre, "transformador")) || strings.Contains(nombre, "nivel 1") {
@@ -1759,7 +1758,7 @@ func ArbolArmonizacionPIV2(armonizacion string) []map[string]interface{} {
 					}
 				}
 			} else {
-				panic(map[string]interface{}{"funcion": "GetUnidades", "err": "Error ", "status": "400", "log": err})
+				outputError = errors.New("error al procesar la peticion ArbolArmonizacionPIV2	" + err.Error())
 			}
 		}
 
@@ -1953,7 +1952,7 @@ func ArbolArmonizacionPI(armonizacion interface{}) []map[string]interface{} {
 			var respuestaSubgrupo map[string]interface{}
 			if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo/"+armonizacionPI[i], &respuesta); err == nil {
 
-				helpers.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
+				request.LimpiezaRespuestaRefactor(respuesta, &respuestaSubgrupo)
 				if len(respuestaSubgrupo) > 0 {
 					nombre := strings.ToLower(respuestaSubgrupo["nombre"].(string))
 					if (strings.Contains(nombre, "eje") && strings.Contains(nombre, "transformador")) || strings.Contains(nombre, "nivel 1") {
@@ -1967,7 +1966,7 @@ func ArbolArmonizacionPI(armonizacion interface{}) []map[string]interface{} {
 					}
 				}
 			} else {
-				panic(map[string]interface{}{"funcion": "GetUnidades", "err": "Error ", "status": "400", "log": err})
+				outputError = errors.New("error al procesar la peticion ArbolArmonizacionPI	" + err.Error())
 			}
 		}
 
@@ -4520,7 +4519,7 @@ func convert(valid []string, index string) ([]map[string]interface{}, map[string
 		if !detallesLlenados {
 			detalles = append(detalles, map[string]interface{}{})
 			if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo-detalle?query=subgrupo_id:"+v+"&fields=dato_plan,armonizacion_dato", &res); err == nil {
-				helpers.LimpiezaRespuestaRefactor(res, &subgrupo_detalle)
+				request.LimpiezaRespuestaRefactor(res, &subgrupo_detalle)
 
 				if len(subgrupo_detalle) > 0 {
 					if subgrupo_detalle[0]["armonizacion_dato"] != nil {

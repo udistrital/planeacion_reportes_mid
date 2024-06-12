@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -40,6 +41,7 @@ var ids [][]string
 var id_arr []string
 var validDataT = []string{}
 var detallesLlenados bool
+var outputError error
 
 func LimpiarDetalles() {
 	detalles = []map[string]interface{}{}
@@ -179,7 +181,7 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 	var actividades []map[string]interface{}
 	if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo-detalle?query=subgrupo_id:"+subgrupo_id+"&fields=dato_plan", &res); err == nil {
 		aux := make([]map[string]interface{}, 1)
-		helpers.LimpiezaRespuestaRefactor(res, &aux)
+		request.LimpiezaRespuestaRefactor(res, &aux)
 		subgrupoDetalle = aux[0]
 		if subgrupoDetalle["dato_plan"] != nil {
 			dato_plan_str := subgrupoDetalle["dato_plan"].(string)
@@ -187,7 +189,7 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 			for indexActividad, element := range datoPlan {
 				_ = indexActividad
 				if err != nil {
-					log.Panic(err)
+					log.Println(err)
 				}
 				if element.(map[string]interface{})["activo"] == true {
 					actividades = append(actividades, element.(map[string]interface{}))
@@ -196,7 +198,7 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 
 		}
 	} else {
-		panic(map[string]interface{}{"Code": "400", "Body": err, "Type": "error"})
+		outputError = errors.New("error al procesar la peticion GetActividades	" + err.Error())
 
 	}
 	return actividades
@@ -2225,16 +2227,16 @@ func GetTrimestres(vigencia string) []map[string]interface{} {
 					helpers.LimpiezaRespuestaRefactor(res, &trimestre)
 					trimestres = append(trimestres, trimestre...)
 				} else {
-					panic(map[string]interface{}{"funcion": "GetTrimestres", "err": "Error ", "status": "400", "log": err})
+					outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 				}
 			} else {
-				panic(map[string]interface{}{"funcion": "GetTrimestres", "err": "Error ", "status": "400", "log": err})
+				outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 			}
 		} else {
-			panic(map[string]interface{}{"funcion": "GetTrimestres", "err": "Error ", "status": "400", "log": err})
+			outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 		}
 	} else {
-		panic(map[string]interface{}{"funcion": "GetTrimestres", "err": "Error ", "status": "400", "log": err})
+		outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 	}
 
 	return trimestres
