@@ -3893,7 +3893,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 		}
 		request.LimpiezaRespuestaRefactor(respuesta, &planes)
 
-		trimestres := evaluacionhelper.GetPeriodos(body["vigencia"].(string))
+		trimestres := reporteshelper.GetPeriodos(body["vigencia"].(string), true)
 
 		if len(planes) <= 0 {
 			estadoHttp = "404"
@@ -3918,7 +3918,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 
 		var index int
 		for index = 3; index >= 0; index-- {
-			evaluacion = evaluacionhelper.GetEvaluacion(planes[0]["_id"].(string), trimestres, index)
+			evaluacion = evaluacionhelper.GetEvaluacion(planes[0]["_id"].(string), trimestres, index, body["vigencia"].(string), periodo)
 			if fmt.Sprintf("%v", evaluacion) != "[]" {
 				break
 			}
