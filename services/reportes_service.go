@@ -3918,7 +3918,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 
 		var index int
 		for index = 3; index >= 0; index-- {
-			evaluacion = evaluacionhelper.GetEvaluacion(planes[0]["_id"].(string), trimestres, index, body["vigencia"].(string), periodo)
+			evaluacion = evaluacionhelper.GetEvaluacion(planes[0]["_id"].(string), trimestres, index)
 			if fmt.Sprintf("%v", evaluacion) != "[]" {
 				break
 			}
