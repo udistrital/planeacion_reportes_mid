@@ -1,6 +1,6 @@
 module github.com/udistrital/planeacion_reportes_mid
 
-go 1.21.3
+go 1.18
 
 require (
 	github.com/astaxie/beego v1.12.3
