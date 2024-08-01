@@ -967,17 +967,25 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 							actividades := reporteshelper.GetActividades(subgrupos[i]["_id"].(string))
 							var arregloLineamieto []map[string]interface{}
 							var arregloLineamietoPI []map[string]interface{}
-							sort.SliceStable(actividades, func(i int, j int) bool {
-								if _, ok := actividades[i]["index"].(float64); ok {
-									actividades[i]["index"] = fmt.Sprintf("%v", int(actividades[i]["index"].(float64)))
+							if len(actividades) == 1 {
+								for index := range actividades {
+									if val, ok := actividades[index]["index"].(float64); ok {
+										actividades[index]["index"] = fmt.Sprintf("%v", int(val))
+									}
 								}
-								if _, ok := actividades[j]["index"].(float64); ok {
-									actividades[j]["index"] = fmt.Sprintf("%v", int(actividades[j]["index"].(float64)))
-								}
-								aux, _ := strconv.Atoi((actividades[i]["index"]).(string))
-								aux1, _ := strconv.Atoi((actividades[j]["index"]).(string))
-								return aux < aux1
-							})
+							} else {
+								sort.SliceStable(actividades, func(i int, j int) bool {
+									if _, ok := actividades[i]["index"].(float64); ok {
+										actividades[i]["index"] = fmt.Sprintf("%v", int(actividades[i]["index"].(float64)))
+									}
+									if _, ok := actividades[j]["index"].(float64); ok {
+										actividades[j]["index"] = fmt.Sprintf("%v", int(actividades[j]["index"].(float64)))
+									}
+									aux, _ := strconv.Atoi((actividades[i]["index"]).(string))
+									aux1, _ := strconv.Atoi((actividades[j]["index"]).(string))
+									return aux < aux1
+								})
+							}
 
 							reporteshelper.LimpiarDetalles()
 							for j := 0; j < len(actividades); j++ {
