@@ -2171,6 +2171,7 @@ func ActualizarRubro(valor int, rubro interface{}) int {
 func EstiloExcelRotacion(file *excelize.File, horizontal, vertical, fillColor string, rotation int, conFill bool) (int, error) {
 	style := &excelize.Style{
 		Alignment: &excelize.Alignment{Horizontal: horizontal, Vertical: vertical, WrapText: true, TextRotation: rotation},
+		Font:      &excelize.Font{Bold: true},
 		Border: []excelize.Border{
 			{Type: "right", Color: ColorNegro, Style: 1},
 			{Type: "left", Color: ColorNegro, Style: 1},
