@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/astaxie/beego v1.12.3
-	github.com/udistrital/planeacion_mid v0.0.0-20240715134750-28aa7f56ab60
+	github.com/udistrital/planeacion_mid v0.0.0-20240802022227-fc8d4716bb48
 	github.com/udistrital/utils_oas v0.0.0-20240711190955-138b3a53e7b1
 	github.com/xuri/excelize/v2 v2.8.1
 )
