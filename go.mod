@@ -51,5 +51,3 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.31.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
-
-replace github.com/udistrital/planeacion_evaluacion_mid => ../planeacion_evaluacion_mid
