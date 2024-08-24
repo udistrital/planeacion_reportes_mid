@@ -4,7 +4,8 @@ go 1.18
 
 require (
 	github.com/astaxie/beego v1.12.3
-	github.com/udistrital/planeacion_mid v0.0.0-20240802022227-fc8d4716bb48
+	github.com/udistrital/planeacion_evaluacion_mid v0.0.0-20240815134343-6e036bf20f7b
+	github.com/udistrital/planeacion_mid v0.0.0-20240816220416-f4a313db335a
 	github.com/udistrital/utils_oas v0.0.0-20240711190955-138b3a53e7b1
 	github.com/xuri/excelize/v2 v2.8.1
 )
@@ -41,6 +42,7 @@ require (
 	github.com/xuri/nfp v0.0.0-20230919160717-d98342af3f05 // indirect
 	golang.org/x/crypto v0.19.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20210114201628-6edceaf6022f // indirect
@@ -49,3 +51,5 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.31.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace github.com/udistrital/planeacion_evaluacion_mid => ../planeacion_evaluacion_mid

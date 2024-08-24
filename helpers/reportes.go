@@ -8,7 +8,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io/ioutil"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/udistrital/planeacion_mid/helpers"
+	seguimientohelper "github.com/udistrital/planeacion_mid/helpers/seguimientoHelper"
 	"github.com/udistrital/planeacion_reportes_mid/models"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/xuri/excelize/v2"
@@ -32,7 +32,6 @@ const (
 	CodigoAval       string = "A_SP"
 )
 
-var estadoHttp string = "500"
 var hijos_key []interface{}
 var hijos_data [][]map[string]interface{}
 var detalles []map[string]interface{}
@@ -41,7 +40,6 @@ var ids [][]string
 var id_arr []string
 var validDataT = []string{}
 var detallesLlenados bool
-var outputError error
 
 func LimpiarDetalles() {
 	detalles = []map[string]interface{}{}
@@ -95,7 +93,7 @@ func BuildTreeFa(hijos []map[string]interface{}, index string) [][]map[string]in
 				var aux []map[string]interface{}
 				if len(hijos_key) == 0 {
 					hijos_key = append(hijos_key, hijos[i]["hijos"])
-					hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{}), true))
+					hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{})))
 					aux = hijos_data[len(hijos_data)-1]
 				} else {
 					flag := false
@@ -108,7 +106,7 @@ func BuildTreeFa(hijos []map[string]interface{}, index string) [][]map[string]in
 					}
 					if !flag {
 						hijos_key = append(hijos_key, hijos[i]["hijos"])
-						hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{}), true))
+						hijos_data = append(hijos_data, getChildren(hijos[i]["hijos"].([]interface{})))
 						aux = hijos_data[len(hijos_data)-1]
 					} else {
 						aux = hijos_data[posicion]
@@ -138,7 +136,7 @@ func BuildTreeFa(hijos []map[string]interface{}, index string) [][]map[string]in
 
 	return result
 }
-func getChildren(children []interface{}, exist bool) (childrenTree []map[string]interface{}) {
+func getChildren(children []interface{}) (childrenTree []map[string]interface{}) {
 	var res map[string]interface{}
 	var nodo []map[string]interface{}
 
@@ -157,7 +155,7 @@ func getChildren(children []interface{}, exist bool) (childrenTree []map[string]
 			id = nodo[0]["_id"].(string)
 
 			if len(nodo[0]["hijos"].([]interface{})) > 0 {
-				aux := getChildren(nodo[0]["hijos"].([]interface{}), true)
+				aux := getChildren(nodo[0]["hijos"].([]interface{}))
 				if len(aux) == 0 {
 					forkData["sub"] = ""
 				} else {
@@ -174,7 +172,7 @@ func getChildren(children []interface{}, exist bool) (childrenTree []map[string]
 	return
 }
 
-func GetActividades(subgrupo_id string) []map[string]interface{} {
+func GetActividades(subgrupo_id string) ([]map[string]interface{}, error) {
 	var res map[string]interface{}
 	var subgrupoDetalle map[string]interface{}
 	var datoPlan map[string]interface{}
@@ -188,9 +186,6 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 			json.Unmarshal([]byte(dato_plan_str), &datoPlan)
 			for indexActividad, element := range datoPlan {
 				_ = indexActividad
-				if err != nil {
-					log.Println(err)
-				}
 				if element.(map[string]interface{})["activo"] == true {
 					actividades = append(actividades, element.(map[string]interface{}))
 				}
@@ -198,10 +193,9 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 
 		}
 	} else {
-		outputError = errors.New("error al procesar la peticion GetActividades	" + err.Error())
-
+		return nil, errors.New("error al procesar la peticion GetActividades	" + err.Error())
 	}
-	return actividades
+	return actividades, nil
 }
 
 func Contains(s []string, e string) bool {
@@ -613,10 +607,11 @@ func TablaIdentificaciones(consolidadoExcelPlanAnual *excelize.File, planId stri
 			}
 		}
 	}
-	return construirTablas(consolidadoExcelPlanAnual, recursos, contratistas, docentes, rubro, nombreRubro)
+	tablasConstruidas, _ := construirTablas(consolidadoExcelPlanAnual, recursos, contratistas, docentes, rubro, nombreRubro)
+	return tablasConstruidas
 }
 
-func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[string]interface{}, contratistas []map[string]interface{}, docentes map[string]interface{}, rubro string, nombreRubro string) *excelize.File {
+func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[string]interface{}, contratistas []map[string]interface{}, docentes map[string]interface{}, rubro string, nombreRubro string) (*excelize.File, error) {
 	stylecontent, _ := consolidadoExcelPlanAnual.NewStyle(&excelize.Style{
 		Alignment: &excelize.Alignment{Horizontal: "justify", Vertical: "center", WrapText: true},
 		Border: []excelize.Border{{Type: "right", Color: "000000", Style: 1},
@@ -679,7 +674,7 @@ func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[st
 	if err := consolidadoExcelPlanAnual.SetSheetView(sheetName, -1, &excelize.ViewOptions{
 		ShowGridLines: &disable,
 	}); err != nil {
-		fmt.Println(err)
+		return nil, errors.New("error en la función construirTablas: " + err.Error())
 	}
 	consolidadoExcelPlanAnual.MergeCell(sheetName, "B1", "F1")
 
@@ -1177,7 +1172,7 @@ func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[st
 	consolidadoExcelPlanAnual.InsertRows(sheetName, 1, 7)
 	consolidadoExcelPlanAnual.MergeCell(sheetName, "C2", "G6")
 
-	return consolidadoExcelPlanAnual
+	return consolidadoExcelPlanAnual, nil
 }
 
 func NombreRubroByCodigo(rubros []map[string]interface{}, codigo string) string {
@@ -2203,7 +2198,7 @@ func EstiloExcel(file *excelize.File, horizontal, vertical string, color string,
 	}
 	return file.NewStyle(style)
 }
-func GetTrimestres(vigencia string) []map[string]interface{} {
+func GetTrimestres(vigencia string) ([]map[string]interface{}, error) {
 
 	var res map[string]interface{}
 	var trimestre []map[string]interface{}
@@ -2228,26 +2223,26 @@ func GetTrimestres(vigencia string) []map[string]interface{} {
 					helpers.LimpiezaRespuestaRefactor(res, &trimestre)
 					trimestres = append(trimestres, trimestre...)
 				} else {
-					outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
+					return nil, errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 				}
 			} else {
-				outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
+				return nil, errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 			}
 		} else {
-			outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
+			return nil, errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 		}
 	} else {
-		outputError = errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
+		return nil, errors.New("error al procesar la peticion GetTrimestres	" + err.Error())
 	}
 
-	return trimestres
+	return trimestres, nil
 }
 
 func GetPeriodos(vigencia string, modo bool) []map[string]interface{} {
 	var periodos []map[string]interface{}
 	var resPeriodo map[string]interface{}
 	var wg sync.WaitGroup
-	trimestres := GetTrimestres(vigencia)
+	trimestres, _ := GetTrimestres(vigencia)
 	periodosMutex := sync.Mutex{}
 
 	for _, trimestre := range trimestres {
@@ -2291,4 +2286,76 @@ func EstiloExcelBordes(file *excelize.File, horizontal, vertical string, fillCol
 		style.Fill = excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{fillColor}}
 	}
 	return file.NewStyle(style)
+}
+func GetPeriodosPlan(vigenciaId string, plan_id string) []map[string]interface{} {
+	var periodos []map[string]interface{}
+	var respuestaUnidad []map[string]interface{}
+	var plan_completo map[string]interface{}
+	var plan_formato map[string]interface{}
+	var respuestaPlan map[string]interface{}
+	var wg sync.WaitGroup
+
+	trimestres := seguimientohelper.GetTrimestres(vigenciaId)
+
+	if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+`/plan/`+plan_id, &respuestaPlan); err == nil {
+		helpers.LimpiezaRespuestaRefactor(respuestaPlan, &plan_completo)
+	}
+
+	if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+`/plan/`+plan_completo["formato_id"].(string), &respuestaPlan); err == nil {
+		helpers.LimpiezaRespuestaRefactor(respuestaPlan, &plan_formato)
+	}
+
+	request.GetJson("http://"+beego.AppConfig.String("OikosService")+"/dependencia?query=Id:"+plan_completo["dependencia_id"].(string), &respuestaUnidad)
+
+	unidades_interes := []interface{}{
+		map[string]interface{}{
+			"Id":     respuestaUnidad[0]["Id"],
+			"Nombre": respuestaUnidad[0]["Nombre"].(string),
+		},
+	}
+	unidades_interes_json, _ := json.Marshal(unidades_interes)
+
+	plan_interes := []interface{}{
+		map[string]interface{}{
+			"_id":    plan_formato["_id"],
+			"nombre": plan_formato["nombre"],
+		},
+	}
+	plan_interes_json, _ := json.Marshal(plan_interes)
+
+	periodosMutex := sync.Mutex{}
+	for _, trimestre := range trimestres {
+		if fmt.Sprintf("%v", trimestre) != "map[]" {
+			wg.Add(1)
+			go func(trimestre map[string]interface{}, wg *sync.WaitGroup, periodos *[]map[string]interface{}) {
+				defer wg.Done()
+				trimestreId := int(trimestre["Id"].(float64))
+				codigoAbreviacion := (trimestre["ParametroId"].(map[string]interface{}))["CodigoAbreviacion"].(string)
+
+				body := map[string]interface{}{
+					"tipo_seguimiento_id": "61f236f525e40c582a0840d0",
+					"periodo_id":          fmt.Sprintf("%v", trimestreId),
+					"unidades_interes":    string(unidades_interes_json),
+					"planes_interes":      string(plan_interes_json),
+				}
+
+				var respuestaPeriodoSeguimiento map[string]interface{}
+				//? Busca registros de periodo-seguimiento mediante expresiones regulares (Revisar planes_crud)
+				if err := helpers.SendJson("http://"+beego.AppConfig.String("PlanesService")+"/periodo-seguimiento/buscar-unidad-planes/1", "POST", &respuestaPeriodoSeguimiento, body); err == nil {
+					var periodosSeguimiento []map[string]interface{}
+					helpers.LimpiezaRespuestaRefactor(respuestaPeriodoSeguimiento, &periodosSeguimiento)
+					periodo := periodosSeguimiento[0]
+					periodo["codigo_trimestre"] = codigoAbreviacion[len(codigoAbreviacion)-1:]
+					periodosMutex.Lock()
+					(*periodos) = append((*periodos), periodo)
+					periodosMutex.Unlock()
+				}
+			}(trimestre, &wg, &periodos)
+		}
+	}
+
+	wg.Wait()
+
+	helpers.SortSlice(&periodos, "codigo_trimestre")
+	return periodos
 }

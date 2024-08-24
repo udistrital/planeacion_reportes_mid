@@ -12,10 +12,11 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego"
-	evaluacionhelper "github.com/udistrital/planeacion_mid/helpers/evaluacionHelper"
+	evaluacionService "github.com/udistrital/planeacion_evaluacion_mid/services"
 	seguimientohelper "github.com/udistrital/planeacion_mid/helpers/seguimientoHelper"
 	reporteshelper "github.com/udistrital/planeacion_reportes_mid/helpers"
 	"github.com/udistrital/planeacion_reportes_mid/models"
+	"github.com/udistrital/utils_oas/formatdata"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/xuri/excelize/v2"
 )
@@ -31,20 +32,10 @@ const (
 	CodigoAval       string = "A_SP"
 )
 
-var estadoHttp string = "500"
-var id_arr []string
-var ids [][]string
-var hijos_key []interface{}
-var hijos_data [][]map[string]interface{}
-var outputError error
-var detallesLlenados bool
-var detalles []map[string]interface{}
-var detalles_armonizacion map[string]interface{}
-
 func ValidarReporte(data []byte) (interface{}, error) {
 
 	if v, e := request.ValidarBody(data); !v || e != nil {
-		return nil, errors.New("error al decodificar el cuerpo de la solicitud: " + e.Error())
+		return nil, errors.New("error al ValidarBody: " + e.Error())
 	}
 
 	var body map[string]interface{}
@@ -55,7 +46,7 @@ func ValidarReporte(data []byte) (interface{}, error) {
 	if data, err := Validar(body); err == nil {
 		return data, nil
 	} else {
-		return nil, errors.New("error al decodificar el cuerpo de la solicitud: ")
+		return nil, errors.New("error al Validar el cuerpo de la solicitud: " + err.Error())
 	}
 
 }
@@ -73,10 +64,6 @@ func Validar(body map[string]interface{}) (res map[string]interface{}, outputErr
 
 	categoria := body["categoria"].(string)
 	tipoPlanID := body["tipo_plan_id"].(string)
-	// TODO: Revisar porque se arma con la categoria "Plan_Accion_Unidad" desde el front
-	if categoria == "Plan_Accion_Unidad" {
-		categoria = "Plan de acción unidad"
-	}
 	switch categoria {
 	case "Evaluación", "Plan de acción unidad":
 		url := "http://" + beego.AppConfig.String("PlanesService") + "/plan?query=activo:true,tipo_plan_id:" + tipoPlanID + ",dependencia_id:" + body["unidad_id"].(string)
@@ -182,7 +169,7 @@ func getIdEstadoAval() (string, error) {
 func Desagregado(data []byte) (interface{}, error) {
 
 	if v, e := request.ValidarBody(data); !v || e != nil {
-		return nil, errors.New("error al decodificar el cuerpo de la solicitud: " + e.Error())
+		return nil, errors.New("error al ValidarBody: " + e.Error())
 	}
 
 	var body map[string]interface{}
@@ -193,7 +180,7 @@ func Desagregado(data []byte) (interface{}, error) {
 	if data, err := ProcesarDesagregado(body); err == nil {
 		return data, nil
 	} else {
-		return nil, errors.New("Error al decodificar el cuerpo de la solicitud: ")
+		return nil, errors.New("Error al ProcesarDesagregado: " + err.Error())
 	}
 
 }
@@ -345,7 +332,7 @@ func PlanAccionAnual(nombre string, Data []byte) (interface{}, error) {
 	if Data, err := ProcesarPlanAccionAnual(body, nombre); err == nil {
 		return Data, nil
 	} else {
-		return nil, errors.New("error al decodificar el cuerpo de la solicitud: ")
+		return nil, errors.New("error al PlanAccionAnual: " + err.Error())
 	}
 
 }
@@ -363,7 +350,7 @@ func PlanAccionAnualGeneral(nombre string, data []byte) (interface{}, error) {
 	if data, err := ProcesarPlanAccionAnualGeneral(body, nombre); err == nil {
 		return data, nil
 	} else {
-		return nil, errors.New("Error al decodificar el cuerpo de la solicitud: ")
+		return nil, errors.New("error al ProcesarPlanAccionAnualGeneral: " + err.Error())
 	}
 }
 func Necesidades(nombre string, data []byte) (interface{}, error) {
@@ -380,7 +367,7 @@ func Necesidades(nombre string, data []byte) (interface{}, error) {
 	if data, err := ProcesarNecesidades(body, nombre); err == nil {
 		return data, nil
 	} else {
-		return nil, errors.New("error al decodificar el cuerpo de la solicitud: ")
+		return nil, errors.New("error al ProcesarNecesidades: " + err.Error())
 	}
 }
 func PlanAccionEvaluacion(nombre string, data []byte) (interface{}, error) {
@@ -397,11 +384,11 @@ func PlanAccionEvaluacion(nombre string, data []byte) (interface{}, error) {
 	if data, err := ProcesarPlanAccionEvaluacion(body, nombre); err == nil {
 		return data, nil
 	} else {
-		return nil, errors.New("error al decodificar el cuerpo de la solicitud: ")
+		return nil, errors.New("error al ProcesarPlanAccionEvaluacion: " + err.Error())
 	}
 }
 
-func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[string]interface{}, contratistas []map[string]interface{}, docentes map[string]interface{}, rubro string, nombreRubro string) *excelize.File {
+func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[string]interface{}, contratistas []map[string]interface{}, docentes map[string]interface{}, rubro string, nombreRubro string) (*excelize.File, error) {
 	stylecontent, _ := reporteshelper.EstiloExcelRotacion(consolidadoExcelPlanAnual, "justify", "center", "", 0, false)
 	stylecontentMR, _ := consolidadoExcelPlanAnual.NewStyle(&excelize.Style{
 		NumFmt:    183,
@@ -440,7 +427,7 @@ func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[st
 	disable := false
 	err := consolidadoExcelPlanAnual.SetSheetView(sheetName, -1, &excelize.ViewOptions{ShowGridLines: &disable})
 	if err != nil {
-		fmt.Println(err)
+		return nil, errors.New("error al construirTablas:" + err.Error())
 	}
 	consolidadoExcelPlanAnual.MergeCell(sheetName, "B1", "F1")
 
@@ -930,16 +917,10 @@ func construirTablas(consolidadoExcelPlanAnual *excelize.File, recursos []map[st
 	}
 	consolidadoExcelPlanAnual.InsertRows(sheetName, 1, 7)
 	consolidadoExcelPlanAnual.MergeCell(sheetName, "C2", "G6")
-	return consolidadoExcelPlanAnual
+	return consolidadoExcelPlanAnual, nil
 }
 
-func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSend map[string]interface{}, outputError error) {
-	defer func() {
-		if err := recover(); err != nil {
-			outputError = errors.New("error ProcesarPlanAccionAnual status error : 500")
-		}
-	}()
-
+func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (map[string]interface{}, error) {
 	var respuesta map[string]interface{}
 	var planesFilter []map[string]interface{}
 	var res map[string]interface{}
@@ -962,17 +943,21 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 			}
 
 			if len(planesFilter) <= 0 {
-				outputError = errors.New("error: no se encontraron planes con los parametros ingresados")
+				return nil, errors.New("error: no se encontraron planes con los parametros ingresados")
 			}
 
 			plan := planesFilter[len(planesFilter)-1]
+			plan_id = plan["_id"].(string)
 
 			if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo?query=padre:"+plan["_id"].(string)+"&fields=nombre,_id,hijos,activo", &res); err == nil {
 				request.LimpiezaRespuestaRefactor(res, &subgrupos)
 
 				for i := 0; i < len(subgrupos); i++ {
 					if strings.Contains(strings.ToLower(subgrupos[i]["nombre"].(string)), "actividad") && strings.Contains(strings.ToLower(subgrupos[i]["nombre"].(string)), "general") {
-						actividades := reporteshelper.GetActividades(subgrupos[i]["_id"].(string))
+						actividades, errActividades := reporteshelper.GetActividades(subgrupos[i]["_id"].(string))
+						if errActividades != nil {
+							return nil, errors.New("error en ProcesaPlanAccionAnual al recibir las actividades" + errActividades.Error())
+						}
 						var arregloLineamieto []map[string]interface{}
 						var arregloLineamietoPI []map[string]interface{}
 						if len(actividades) == 1 {
@@ -1064,13 +1049,13 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 							datosArmonizacion["indicadores"] = titulosArmonizacion
 							//if armonizacionTercerNivel != nil {
 							//arregloLineamieto = reporteshelper.ArbolArmonizacion(armonizacionTercerNivel.(string))
-							arregloLineamieto = ArbolArmonizacionV2(armonizacionTercerNivel.(string))
+							arregloLineamieto, _ = ArbolArmonizacionV2(armonizacionTercerNivel.(string))
 							//} else {
 							//	arregloLineamieto = []map[string]interface{}{}
 							//}
 							//if armonizacionTercerNivelPI != nil {
 							//arregloLineamietoPI = reporteshelper.ArbolArmonizacionPI(armonizacionTercerNivelPI)
-							arregloLineamietoPI = ArbolArmonizacionPIV2(armonizacionTercerNivelPI.(string))
+							arregloLineamietoPI, _ = ArbolArmonizacionPIV2(armonizacionTercerNivelPI.(string))
 							//} else {
 							//	arregloLineamietoPI = []map[string]interface{}{}
 							//}
@@ -1081,7 +1066,7 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 								dependenciaNombre := aux["DependenciaId"].(map[string]interface{})
 								nombreUnidad = dependenciaNombre["Nombre"].(string)
 							} else {
-								outputError = errors.New("error al procesar la peticion " + err.Error())
+								return nil, errors.New("error al procesar la peticion " + err.Error())
 							}
 
 							generalData["nombreUnidad"] = nombreUnidad
@@ -1097,7 +1082,7 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 					}
 				}
 			} else {
-				outputError = errors.New("error al procesar la peticion " + err.Error())
+				return nil, errors.New("error al procesar la peticion " + err.Error())
 			}
 
 			unidadNombre = arregloPlanAnual[0]["nombreUnidad"].(string)
@@ -1110,7 +1095,7 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 			if err := consolidadoExcelPlanAnual.SetSheetView(sheetName, -1, &excelize.ViewOptions{
 				ShowGridLines: &disable,
 			}); err != nil {
-				fmt.Println(err)
+				return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 			}
 
 			stylehead, _ := reporteshelper.EstiloExcel(consolidadoExcelPlanAnual, "center", "center", ColorRojo, true)
@@ -1371,11 +1356,11 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 
 			if err := consolidadoExcelPlanAnual.AddPicture("Actividades del plan", "B1", "static/img/UDEscudo2.png",
 				&excelize.GraphicOptions{ScaleX: 0.1, ScaleY: 0.1, Positioning: "oneCell", OffsetX: 10}); err != nil {
-				fmt.Println(err)
+				return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 			}
 			if err := consolidadoExcelPlanAnual.AddPicture("Identificaciones", "B1", "static/img/UDEscudo2.png",
 				&excelize.GraphicOptions{ScaleX: 0.1, ScaleY: 0.1, Positioning: "absolute", OffsetX: 10}); err != nil {
-				fmt.Println(err)
+				return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 			}
 
 			consolidadoExcelPlanAnual.SetColWidth("Actividades del plan", "A", "A", 2)
@@ -1387,23 +1372,16 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (dataSe
 			dataSend["generalData"] = arregloPlanAnual
 			dataSend["excelB64"] = encoded
 
-			return dataSend, outputError
+			return dataSend, nil
 		} else {
-			outputError = errors.New("error de longitud")
+			return nil, errors.New("error de longitud")
 		}
+	} else {
+		return nil, errors.New("error en ProcesarPlanAccionAnual: No se agrego el unidad_id en la petición")
 	}
-
-	return dataSend, outputError
-
 }
 
-func GetActividades(subgrupo_id string) []map[string]interface{} {
-	defer func() {
-		if err := recover(); err != nil {
-			outputError = errors.New("error al procesar la peticion ")
-		}
-	}()
-
+func GetActividades(subgrupo_id string) ([]map[string]interface{}, error) {
 	var res map[string]interface{}
 	var subgrupoDetalle map[string]interface{}
 	var datoPlan map[string]interface{}
@@ -1411,7 +1389,7 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 
 	url := "http://" + beego.AppConfig.String("PlanesService") + "/subgrupo-detalle?query=subgrupo_id:" + subgrupo_id + "&fields=dato_plan"
 	if err := request.GetJson(url, &res); err != nil {
-		outputError = errors.New("error al procesar la peticion " + err.Error())
+		return nil, errors.New("error al procesar la peticion " + err.Error())
 	}
 	aux := make([]map[string]interface{}, 1)
 	request.LimpiezaRespuestaRefactor(res, &aux)
@@ -1425,10 +1403,10 @@ func GetActividades(subgrupo_id string) []map[string]interface{} {
 			}
 		}
 	}
-	return actividades
+	return actividades, nil
 }
 
-func ArbolArmonizacionV2(armonizacion string) []map[string]interface{} {
+func ArbolArmonizacionV2(armonizacion string) ([]map[string]interface{}, error) {
 
 	var estrategias []map[string]interface{}
 	var metas []map[string]interface{}
@@ -1454,7 +1432,7 @@ func ArbolArmonizacionV2(armonizacion string) []map[string]interface{} {
 					}
 				}
 			} else {
-				outputError = errors.New("error al procesar la peticion GetUnidades	" + err.Error())
+				return nil, errors.New("error al procesar la peticion GetUnidades	" + err.Error())
 			}
 		}
 
@@ -1630,10 +1608,10 @@ func ArbolArmonizacionV2(armonizacion string) []map[string]interface{} {
 		})
 	}
 
-	return arregloArmo
+	return arregloArmo, nil
 }
 
-func ArbolArmonizacion(armonizacion string) []map[string]interface{} {
+func ArbolArmonizacion(armonizacion string) ([]map[string]interface{}, error) {
 
 	var respuesta map[string]interface{}
 	var lineamientos []map[string]interface{}
@@ -1658,7 +1636,7 @@ func ArbolArmonizacion(armonizacion string) []map[string]interface{} {
 				}
 			}
 		} else {
-			outputError = errors.New("error al procesar la peticion GetUnidades	" + err.Error())
+			return nil, errors.New("error al procesar la peticion GetUnidades	" + err.Error())
 		}
 	}
 
@@ -1719,7 +1697,7 @@ func ArbolArmonizacion(armonizacion string) []map[string]interface{} {
 				break
 			}
 		}
-		if bandera == false {
+		if !bandera {
 			lineamiento := make(map[string]interface{})
 			var arregloMetas []map[string]interface{}
 			arregloMetas = append(arregloMetas, meta)
@@ -1787,10 +1765,10 @@ func ArbolArmonizacion(armonizacion string) []map[string]interface{} {
 		}
 	}
 
-	return arreglo
+	return arreglo, nil
 }
 
-func ArbolArmonizacionPIV2(armonizacion string) []map[string]interface{} {
+func ArbolArmonizacionPIV2(armonizacion string) ([]map[string]interface{}, error) {
 
 	var estrategias []map[string]interface{}
 	var lineamientos []map[string]interface{}
@@ -1815,7 +1793,7 @@ func ArbolArmonizacionPIV2(armonizacion string) []map[string]interface{} {
 					}
 				}
 			} else {
-				outputError = errors.New("error al procesar la peticion ArbolArmonizacionPIV2	" + err.Error())
+				return nil, errors.New("error al procesar la peticion ArbolArmonizacionPIV2	" + err.Error())
 			}
 		}
 
@@ -1991,10 +1969,10 @@ func ArbolArmonizacionPIV2(armonizacion string) []map[string]interface{} {
 		})
 	}
 
-	return arregloArmo
+	return arregloArmo, nil
 }
 
-func ArbolArmonizacionPI(armonizacion interface{}) []map[string]interface{} {
+func ArbolArmonizacionPI(armonizacion interface{}) ([]map[string]interface{}, error) {
 
 	var respuesta map[string]interface{}
 	var lineamientos []map[string]interface{}
@@ -2023,7 +2001,7 @@ func ArbolArmonizacionPI(armonizacion interface{}) []map[string]interface{} {
 					}
 				}
 			} else {
-				outputError = errors.New("error al procesar la peticion ArbolArmonizacionPI	" + err.Error())
+				return nil, errors.New("error al procesar la peticion ArbolArmonizacionPI	" + err.Error())
 			}
 		}
 
@@ -2085,7 +2063,7 @@ func ArbolArmonizacionPI(armonizacion interface{}) []map[string]interface{} {
 					break
 				}
 			}
-			if bandera == false {
+			if !bandera {
 				factor := make(map[string]interface{})
 				var arregloLineamientos []map[string]interface{}
 				arregloLineamientos = append(arregloLineamientos, lineamiento)
@@ -2178,7 +2156,7 @@ func ArbolArmonizacionPI(armonizacion interface{}) []map[string]interface{} {
 		arreglo = append(arreglo, factor)
 	}
 
-	return arreglo
+	return arreglo, nil
 }
 
 func identificacionNueva(iddetail string) interface{} {
@@ -2305,7 +2283,8 @@ func TablaIdentificaciones(consolidadoExcelPlanAnual *excelize.File, planId stri
 			}
 		}
 	}
-	return construirTablas(consolidadoExcelPlanAnual, recursos, contratistas, docentes, rubro, nombreRubro)
+	tablasConstruidas, _ := construirTablas(consolidadoExcelPlanAnual, recursos, contratistas, docentes, rubro, nombreRubro)
+	return tablasConstruidas
 }
 
 func getDataDocentes(docentes map[string]interface{}, dependencia_id string) map[string]interface{} {
@@ -2363,13 +2342,7 @@ func getDataDocentes(docentes map[string]interface{}, dependencia_id string) map
 	return dataDocentes
 }
 
-func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) (dataSend map[string]interface{}, outputError error) {
-	defer func() {
-		if err := recover(); err != nil {
-			outputError = errors.New("error al ProcesarPlanAccionAnualGeneral status error : 500")
-		}
-	}()
-
+func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) (map[string]interface{}, error) {
 	var respuesta map[string]interface{}
 	var planesFilter []map[string]interface{}
 	var res map[string]interface{}
@@ -2393,8 +2366,7 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 
 	url := "http://" + beego.AppConfig.String("PlanesService") + "/plan?query=activo:true,tipo_plan_id:" + body["tipo_plan_id"].(string) + ",vigencia:" + body["vigencia"].(string) + ",estado_plan_id:" + body["estado_plan_id"].(string) + ",nombre:" + nombre + "&fields=_id,dependencia_id,estado_plan_id,tipo_plan_id"
 	if err := request.GetJson(url, &respuesta); err != nil {
-		estadoHttp = "500"
-		outputError = errors.New("error al procesar la peticion " + err.Error())
+		return nil, errors.New("error al procesar la peticion " + err.Error())
 	}
 	request.LimpiezaRespuestaRefactor(respuesta, &planesFilter)
 
@@ -2402,8 +2374,7 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 		if idUnidad != planes["dependencia_id"].(string) {
 			url2 := "http://" + beego.AppConfig.String("OikosService") + "/dependencia_tipo_dependencia?query=DependenciaId:" + planes["dependencia_id"].(string)
 			if err := request.GetJson(url2, &respuestaUnidad); err != nil {
-				estadoHttp = "500"
-				outputError = errors.New("error al procesar la peticion " + err.Error())
+				return nil, errors.New("error al procesar la peticion " + err.Error())
 			}
 			planes["nombreUnidad"] = respuestaUnidad[0]["DependenciaId"].(map[string]interface{})["Nombre"].(string)
 		}
@@ -2422,14 +2393,13 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 		infoReporte := make(map[string]interface{})
 		url3 := "http://" + beego.AppConfig.String("PlanesService") + "/subgrupo?query=padre:" + plan_id + "&fields=nombre,_id,hijos,activo"
 		if err := request.GetJson(url3, &res); err != nil {
-			estadoHttp = "500"
-			outputError = errors.New("error al procesar la peticion status: 500" + err.Error())
+			return nil, errors.New("error al procesar la peticion status: 500" + err.Error())
 		}
 		request.LimpiezaRespuestaRefactor(res, &subgrupos)
 
 		for i := 0; i < len(subgrupos); i++ {
 			if strings.Contains(strings.ToLower(subgrupos[i]["nombre"].(string)), "actividad") && strings.Contains(strings.ToLower(subgrupos[i]["nombre"].(string)), "general") {
-				actividades := GetActividades(subgrupos[i]["_id"].(string))
+				actividades, _ := GetActividades(subgrupos[i]["_id"].(string))
 				var arregloLineamieto []map[string]interface{}
 				var arregloLineamietoPI []map[string]interface{}
 				sort.SliceStable(actividades, func(i int, j int) bool {
@@ -2444,12 +2414,24 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 					return aux < aux1
 				})
 				reporteshelper.LimpiarDetalles()
+				fmt.Println("Actividades")
+				formatdata.JsonPrint(actividades)
 				for j := 0; j < len(actividades); j++ {
+					var index string
 					arregloLineamieto = nil
 					arregloLineamietoPI = nil
 					actividad := actividades[j]
 					actividadName = actividad["dato"].(string)
-					index := actividad["index"].(string)
+					switch v := actividad["index"].(type) {
+					case int:
+						// Convertir el número a string
+						index = strconv.Itoa(v)
+					case float64:
+						// Convertir el número a string
+						index = strconv.FormatFloat(v, 'f', -1, 64)
+					case string:
+						index = v
+					}
 					datosArmonizacion := make(map[string]interface{})
 					titulosArmonizacion := make(map[string]interface{})
 
@@ -2509,13 +2491,13 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 					datosArmonizacion["indicadores"] = titulosArmonizacion
 					//if armonizacionTercerNivel != nil {
 					//arregloLineamieto = reporteshelper.ArbolArmonizacion(armonizacionTercerNivel.(string))
-					arregloLineamieto = ArbolArmonizacionV2(armonizacionTercerNivel.(string))
+					arregloLineamieto, _ = ArbolArmonizacionV2(armonizacionTercerNivel.(string))
 					//} else {
 					//	arregloLineamieto = []map[string]interface{}{}
 					//}
 					//if armonizacionTercerNivelPI != nil {
 					//arregloLineamietoPI = reporteshelper.ArbolArmonizacionPI(armonizacionTercerNivelPI)
-					arregloLineamietoPI = ArbolArmonizacionPIV2(armonizacionTercerNivelPI.(string))
+					arregloLineamietoPI, _ = ArbolArmonizacionPIV2(armonizacionTercerNivelPI.(string))
 					//} else {
 					//	arregloLineamietoPI = []map[string]interface{}{}
 					//}
@@ -2537,15 +2519,13 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 
 		url4 := "http://" + beego.AppConfig.String("PlanesService") + "/estado-plan/" + planesFilter[planes]["estado_plan_id"].(string)
 		if err := request.GetJson(url4, &respuestaEstado); err != nil {
-			estadoHttp = "500"
-			outputError = errors.New("error al procesar la peticion " + err.Error())
+			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
 		request.LimpiezaRespuestaRefactor(respuestaEstado, &estado)
 
 		url5 := "http://" + beego.AppConfig.String("PlanesService") + "/tipo-plan/" + planesFilter[planes]["tipo_plan_id"].(string)
 		if err := request.GetJson(url5, &respuestaTipoPlan); err != nil {
-			estadoHttp = "500"
-			outputError = errors.New("error al procesar la peticion " + err.Error())
+			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
 		request.LimpiezaRespuestaRefactor(respuestaTipoPlan, &tipoPlan)
 
@@ -2568,13 +2548,12 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 			disable := false
 			err := consolidadoExcelPlanAnual.SetSheetView(sheetName, -1, &excelize.ViewOptions{ShowGridLines: &disable})
 			if err != nil {
-				fmt.Println(err)
+				return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 			}
 
 			url6 := "http://" + beego.AppConfig.String("ParametrosService") + `/periodo?query=Id:` + body["vigencia"].(string)
 			if err := request.GetJson(url6, &resPeriodo); err != nil {
-				estadoHttp = "500"
-				outputError = errors.New("error al procesar la peticion " + err.Error())
+				return nil, errors.New("error al procesar la peticion " + err.Error())
 			}
 			request.LimpiezaRespuestaRefactor(resPeriodo, &periodo)
 		}
@@ -2827,8 +2806,7 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 	}
 
 	if len(planesFilter) <= 0 {
-		estadoHttp = "404"
-		outputError = errors.New("error de longitud")
+		return nil, errors.New("error de longitud")
 	}
 
 	styletitle, _ := consolidadoExcelPlanAnual.NewStyle(&excelize.Style{
@@ -2853,7 +2831,7 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 
 	if err := consolidadoExcelPlanAnual.AddPicture("REPORTE GENERAL", "B1", "static/img/UDEscudo2.png",
 		&excelize.GraphicOptions{ScaleX: 0.1, ScaleY: 0.1, Positioning: "oneCell", OffsetX: 10}); err != nil {
-		fmt.Println(err)
+		return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 	}
 
 	consolidadoExcelPlanAnual.SetColWidth("REPORTE GENERAL", "A", "A", 2)
@@ -2861,10 +2839,10 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 	strings.NewReader(buf.String())
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-	dataSend = make(map[string]interface{})
+	dataSend := make(map[string]interface{})
 	dataSend["generalData"] = arregloInfoReportes
 	dataSend["excelB64"] = encoded
-	return dataSend, outputError
+	return dataSend, nil
 }
 
 func ProcesarNecesidades(body map[string]interface{}, nombre string) (dataSend map[string]interface{}, outputError error) {
@@ -3015,7 +2993,7 @@ func ProcesarNecesidades(body map[string]interface{}, nombre string) (dataSend m
 	disable := false
 	err := necesidadesExcel.SetSheetView("Necesidades", -1, &excelize.ViewOptions{ShowGridLines: &disable})
 	if err != nil {
-		fmt.Println(err)
+		return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 	}
 
 	necesidadesExcel.MergeCell("Necesidades", "C1", "E1")
@@ -3922,7 +3900,7 @@ func ProcesarNecesidades(body map[string]interface{}, nombre string) (dataSend m
 
 	if err := necesidadesExcel.AddPicture("Necesidades", "B1", "static/img/UDEscudo2.png",
 		&excelize.GraphicOptions{ScaleX: 0.1, ScaleY: 0.1, Positioning: "oneCell", OffsetX: 25}); err != nil {
-		fmt.Println(err)
+		return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 	}
 
 	contador = 1
@@ -3967,13 +3945,7 @@ func ProcesarNecesidades(body map[string]interface{}, nombre string) (dataSend m
 	return dataSend, outputError
 }
 
-func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (dataSend map[string]interface{}, outputError error) {
-	defer func() {
-		if err := recover(); err != nil {
-			outputError = errors.New("error al ProcesarPlanAccionEvaluacion status error : 500")
-		}
-	}()
-
+func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (map[string]interface{}, error) {
 	var respuesta map[string]interface{}
 	var planes []map[string]interface{}
 	var arregloPlanAnual []map[string]interface{}
@@ -3991,36 +3963,34 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 	if body["unidad_id"].(string) != "" {
 		idEstadoAval, errId := getIdEstadoAval()
 		if errId != nil {
-			outputError = errors.New("error al procesar la peticion " + errId.Error())
+			return nil, errors.New("error al procesar la peticion " + errId.Error())
 		}
 
 		url := "http://" + beego.AppConfig.String("PlanesService") + "/plan?query=activo:true,tipo_plan_id:" + body["tipo_plan_id"].(string) + ",vigencia:" + body["vigencia"].(string) + ",estado_plan_id:" + idEstadoAval + ",dependencia_id:" + body["unidad_id"].(string) + ",nombre:" + nombre
 		if err := request.GetJson(url, &respuesta); err != nil {
-			estadoHttp = "500"
-			outputError = errors.New("error al procesar la peticion " + err.Error())
+			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
 		request.LimpiezaRespuestaRefactor(respuesta, &planes)
 
-		trimestres := reporteshelper.GetPeriodos(body["vigencia"].(string), true)
+		if err := request.GetJson("http://"+beego.AppConfig.String("SeguimientoService")+"/seguimiento/"+planes[0]["_id"].(string), &respuesta); err != nil {
+			return nil, errors.New("error al procesar la peticion " + err.Error())
+		}
+		trimestres := reporteshelper.GetPeriodosPlan(body["vigencia"].(string), planes[0]["_id"].(string))
+		fmt.Println("trimestres")
+		formatdata.JsonPrint(trimestres)
 
 		if len(planes) <= 0 {
-			estadoHttp = "404"
-			outputError = errors.New("error de longitud")
+			return nil, errors.New("error de longitud")
 		}
 
-		dependencia := body["unidad_id"].(string)
-		url2 := "http://" + beego.AppConfig.String("OikosService") + "/dependencia?query=Id:" + dependencia
-		if err := request.GetJson(url2, &respuestaOikos); err != nil {
-			estadoHttp = "500"
-			outputError = errors.New("error al procesar la peticion " + err.Error())
+		if err := request.GetJson("http://"+beego.AppConfig.String("OikosService")+"/dependencia?query=Id:"+body["unidad_id"].(string), &respuestaOikos); err != nil {
+			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
 		unidadNombre = respuestaOikos[0]["Nombre"].(string)
 		arregloPlanAnual = append(arregloPlanAnual, map[string]interface{}{"nombreUnidad": unidadNombre})
 
-		url3 := "http://" + beego.AppConfig.String("ParametrosService") + `/periodo?query=Id:` + body["vigencia"].(string)
-		if err := request.GetJson(url3, &resPeriodo); err != nil {
-			estadoHttp = "500"
-			outputError = errors.New("error al procesar la peticion " + err.Error())
+		if err := request.GetJson("http://"+beego.AppConfig.String("ParametrosService")+`/periodo?query=Id:`+body["vigencia"].(string), &resPeriodo); err != nil {
+			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
 		request.LimpiezaRespuestaRefactor(resPeriodo, &periodo)
 
@@ -4028,18 +3998,23 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 		trimestresConContenido := make([]map[string]interface{}, 0)
 
 		for indexTrimestre := 0; indexTrimestre <= len(trimestres)-1; indexTrimestre++ {
-			auxEvaluacion := evaluacionhelper.GetEvaluacion(planes[0]["_id"].(string), trimestres, indexTrimestre)
-			if fmt.Sprintf("%v", auxEvaluacion) != "[]" {
+			auxEvaluacion := evaluacionService.GetEvaluacionInterno(planes[0]["_id"].(string), trimestres, indexTrimestre)
+			if auxEvaluacion != nil && fmt.Sprintf("%v", auxEvaluacion) != "[]" {
 				evaluacion = auxEvaluacion
 				trimestreDelAnio = trimestres[indexTrimestre]["codigo_trimestre"].(string)
 				trimestresConContenido = append(trimestresConContenido, trimestres[indexTrimestre])
 			}
 		}
 
+		fmt.Println("trimestresConContenido")
+		formatdata.JsonPrint(trimestresConContenido)
+		fmt.Println("evaluacion")
+		formatdata.JsonPrint(evaluacion)
 		trimestreVacio := map[string]interface{}{"actividad": 0.0, "acumulado": 0.0, "denominador": 0.0, "meta": 0.0, "numerador": 0.0, "periodo": 0.0, "numeradorAcumulado": 0.0, "denominadorAcumulado": 0.0, "brecha": 0.0, "cualitativo": map[string]interface{}{"reporte": "", "dificultades": ""}}
 		for _, actividad := range evaluacion {
 			for auxTrim := len(trimestresConContenido) - 1; auxTrim >= 0; auxTrim-- {
-				seguimiento, err := seguimientohelper.GetSeguimiento(planes[0]["_id"].(string), actividad["numero"].(string), trimestresConContenido[auxTrim]["_id"].(string))
+				fmt.Println("DAtos:\n"+actividad["planId"].(string), actividad["numero"].(string), trimestresConContenido[auxTrim]["_id"].(string))
+				seguimiento, err := seguimientohelper.GetSeguimiento(actividad["planId"].(string), actividad["numero"].(string), trimestresConContenido[auxTrim]["_id"].(string))
 				if err == nil {
 					switch auxTrim {
 					case 0:
@@ -4106,8 +4081,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 				}
 			}
 		case "-1":
-			estadoHttp = "404"
-			outputError = errors.New("error de indexación")
+			return nil, errors.New("error de indexación")
 		}
 
 		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo?query=padre:"+planes[0]["_id"].(string)+"&fields=nombre,_id,hijos,activo", &res); err == nil {
@@ -4115,7 +4089,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 
 			for i := 0; i < len(subgrupos); i++ {
 				if strings.Contains(strings.ToLower(subgrupos[i]["nombre"].(string)), "actividad") && strings.Contains(strings.ToLower(subgrupos[i]["nombre"].(string)), "general") {
-					actividades := reporteshelper.GetActividades(subgrupos[i]["_id"].(string))
+					actividades, _ := reporteshelper.GetActividades(subgrupos[i]["_id"].(string))
 					var arregloLineamietoPED []map[string]interface{}
 					var arregloLineamietoPI []map[string]interface{}
 					if len(actividades) == 1 {
@@ -4205,8 +4179,8 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 						}
 
 						datosArmonizacion["indicadores"] = titulosArmonizacion
-						arregloLineamietoPED = ArbolArmonizacionV2(armonizacionTercerNivel.(string))
-						arregloLineamietoPI = ArbolArmonizacionPIV2(armonizacionTercerNivelPI.(string))
+						arregloLineamietoPED, _ = ArbolArmonizacionV2(armonizacionTercerNivel.(string))
+						arregloLineamietoPI, _ = ArbolArmonizacionPIV2(armonizacionTercerNivelPI.(string))
 						generalData := make(map[string]interface{})
 						generalData["nombreActividad"] = actividadName
 						generalData["numeroActividad"] = index
@@ -4229,7 +4203,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 		disable := false
 		err := consolidadoExcelEvaluacion.SetSheetView(sheetName, -1, &excelize.ViewOptions{ShowGridLines: &disable})
 		if err != nil {
-			fmt.Println(err)
+			return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 		}
 
 		styleUnidad, _ := consolidadoExcelEvaluacion.NewStyle(&excelize.Style{
@@ -4442,8 +4416,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 		ddRango1.SetDropList([]string{"Trimestre I", "Trimestre II", "Trimestre III", "Trimestre IV"})
 
 		if err := consolidadoExcelEvaluacion.AddDataValidation(sheetName, ddRango1); err != nil {
-			fmt.Println(err)
-			return
+			return nil, errors.New("error del servicio ProcesarPlanAccionAnual" + err.Error())
 		}
 
 		// Titles
@@ -5001,17 +4974,23 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (d
 		strings.NewReader(buf.String())
 		encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-		dataSend = make(map[string]interface{})
+		dataSend := make(map[string]interface{})
 		dataSend["generalData"] = arregloPlanAnual
 		dataSend["excelB64"] = encoded
+		return dataSend, nil
+	} else {
+		return nil, errors.New("error ProcesarPlanAccionEvaluacion: No se agrego la propiedad unidad_id")
 	}
-	return dataSend, outputError
 }
 
 func convert(valid []string, index string) ([]map[string]interface{}, map[string]interface{}) {
 	var validadores []map[string]interface{}
 	var actividad map[string]interface{}
 	var dato_armonizacion map[string]interface{}
+	var detallesLlenados bool
+	var detalles []map[string]interface{}
+	var detalles_armonizacion map[string]interface{}
+
 	armonizacion := make(map[string]interface{})
 	forkData := make(map[string]interface{})
 	for i, v := range valid {
