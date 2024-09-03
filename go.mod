@@ -6,6 +6,7 @@ require (
 	github.com/astaxie/beego v1.12.3
 	github.com/udistrital/planeacion_evaluacion_mid v0.0.0-20240815134343-6e036bf20f7b
 	github.com/udistrital/planeacion_mid v0.0.0-20240816220416-f4a313db335a
+	github.com/udistrital/planeacion_seguimiento_mid v0.0.0-20240813205503-43cfa1916668
 	github.com/udistrital/utils_oas v0.0.0-20240711190955-138b3a53e7b1
 	github.com/xuri/excelize/v2 v2.8.1
 )

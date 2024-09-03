@@ -13,10 +13,9 @@ import (
 
 	"github.com/astaxie/beego"
 	evaluacionService "github.com/udistrital/planeacion_evaluacion_mid/services"
-	seguimientohelper "github.com/udistrital/planeacion_mid/helpers/seguimientoHelper"
 	reporteshelper "github.com/udistrital/planeacion_reportes_mid/helpers"
 	"github.com/udistrital/planeacion_reportes_mid/models"
-	"github.com/udistrital/utils_oas/formatdata"
+	seguimientoService "github.com/udistrital/planeacion_seguimiento_mid/services"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/xuri/excelize/v2"
 )
@@ -2414,8 +2413,6 @@ func ProcesarPlanAccionAnualGeneral(body map[string]interface{}, nombre string) 
 					return aux < aux1
 				})
 				reporteshelper.LimpiarDetalles()
-				fmt.Println("Actividades")
-				formatdata.JsonPrint(actividades)
 				for j := 0; j < len(actividades); j++ {
 					var index string
 					arregloLineamieto = nil
@@ -3956,6 +3953,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 	var resPeriodo map[string]interface{}
 	var res map[string]interface{}
 	var subgrupos []map[string]interface{}
+	var respuestaSeguimientos map[string]interface{}
 	excelArmonizacion := make([]map[string]interface{}, 0)
 
 	consolidadoExcelEvaluacion := excelize.NewFile()
@@ -3972,12 +3970,11 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 		}
 		request.LimpiezaRespuestaRefactor(respuesta, &planes)
 
-		if err := request.GetJson("http://"+beego.AppConfig.String("SeguimientoService")+"/seguimiento/"+planes[0]["_id"].(string), &respuesta); err != nil {
+		if err := request.GetJson("http://"+beego.AppConfig.String("SeguimientoService")+"/seguimiento/"+planes[0]["_id"].(string), &respuestaSeguimientos); err != nil {
 			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
+		seguimientos := respuestaSeguimientos["data"].([]interface{})
 		trimestres := reporteshelper.GetPeriodosPlan(body["vigencia"].(string), planes[0]["_id"].(string))
-		fmt.Println("trimestres")
-		formatdata.JsonPrint(trimestres)
 
 		if len(planes) <= 0 {
 			return nil, errors.New("error de longitud")
@@ -3998,23 +3995,17 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 		trimestresConContenido := make([]map[string]interface{}, 0)
 
 		for indexTrimestre := 0; indexTrimestre <= len(trimestres)-1; indexTrimestre++ {
-			auxEvaluacion := evaluacionService.GetEvaluacionInterno(planes[0]["_id"].(string), trimestres, indexTrimestre)
+			auxEvaluacion := evaluacionService.GetEvaluacionInterno(seguimientos[indexTrimestre].(map[string]interface{})["plan_id"].(string), trimestres, indexTrimestre)
 			if auxEvaluacion != nil && fmt.Sprintf("%v", auxEvaluacion) != "[]" {
 				evaluacion = auxEvaluacion
 				trimestreDelAnio = trimestres[indexTrimestre]["codigo_trimestre"].(string)
 				trimestresConContenido = append(trimestresConContenido, trimestres[indexTrimestre])
 			}
 		}
-
-		fmt.Println("trimestresConContenido")
-		formatdata.JsonPrint(trimestresConContenido)
-		fmt.Println("evaluacion")
-		formatdata.JsonPrint(evaluacion)
 		trimestreVacio := map[string]interface{}{"actividad": 0.0, "acumulado": 0.0, "denominador": 0.0, "meta": 0.0, "numerador": 0.0, "periodo": 0.0, "numeradorAcumulado": 0.0, "denominadorAcumulado": 0.0, "brecha": 0.0, "cualitativo": map[string]interface{}{"reporte": "", "dificultades": ""}}
 		for _, actividad := range evaluacion {
 			for auxTrim := len(trimestresConContenido) - 1; auxTrim >= 0; auxTrim-- {
-				fmt.Println("DAtos:\n"+actividad["planId"].(string), actividad["numero"].(string), trimestresConContenido[auxTrim]["_id"].(string))
-				seguimiento, err := seguimientohelper.GetSeguimiento(actividad["planId"].(string), actividad["numero"].(string), trimestresConContenido[auxTrim]["_id"].(string))
+				seguimiento, err := seguimientoService.ConsultarSeguimiento(actividad["planId"].(string), actividad["numero"].(string), trimestresConContenido[auxTrim]["_id"].(string))
 				if err == nil {
 					switch auxTrim {
 					case 0:
