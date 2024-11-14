@@ -61,41 +61,59 @@ func Validar(body map[string]interface{}) (res map[string]interface{}, outputErr
 	var resFilter []map[string]interface{}
 	res = make(map[string]interface{})
 
-	categoria := body["categoria"].(string)
-	tipoPlanID := body["tipo_plan_id"].(string)
-	switch categoria {
-	case "Evaluación", "Plan de acción unidad":
-		url := "http://" + beego.AppConfig.String("PlanesService") + "/plan?query=activo:true,tipo_plan_id:" + tipoPlanID + ",dependencia_id:" + body["unidad_id"].(string)
-		if err := request.GetJson(url, &res1); err != nil {
-			outputError = errors.New("error lan de acción unidad status : 404")
-		}
-		request.LimpiezaRespuestaRefactor(res1, &resFilter)
+  if body["categoria"].(string) == "Evaluacion" {
+		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/plan?query=activo:true,tipo_plan_id:"+body["tipo_plan_id"].(string)+",dependencia_id:"+body["unidad_id"].(string), &res1); err == nil {
+			request.LimpiezaRespuestaRefactor(res1, &resFilter)
 
-		if len(resFilter) == 0 {
-			res["mensaje"] = "No existen planes para la unidad seleccionada"
-			res["reporte"] = false
-		} else {
-			noPlan := true
-			noVigencia := true
-			noEstado := true
-
-			estadoPlanID := ""
-			if categoria == "Evaluación" {
-				idEstadoAval, errId := getIdEstadoAval()
-				if errId != nil {
-					outputError = errors.New("error idEstadoAval status : 404" + errId.Error())
+			if len(resFilter) == 0 {
+				res["mensaje"] = "No existen planes para la unidad seleccionada"
+				res["reporte"] = false
+			} else {
+				noPlan := true
+				noVigencia := true
+				noEstado := true
+				for i := 0; i < len(resFilter); i++ {
+					if resFilter[i]["nombre"] == body["nombre"].(string) {
+						noPlan = false
+						if resFilter[i]["vigencia"] == body["vigencia"].(string) {
+							noVigencia = false
+							if resFilter[i]["estado_plan_id"] == "6153355601c7a2365b2fb2a1" { //Estado Avalado
+								noEstado = false
+								res["mensaje"] = ""
+								res["reporte"] = true
+								break
+							}
+						}
+					}
 				}
-				estadoPlanID = idEstadoAval
-			} else if categoria == "Plan de acción unidad" {
-				estadoPlanID = body["estado_plan_id"].(string)
-			}
 
-			for _, plan := range resFilter {
-				if plan["nombre"] == body["nombre"].(string) {
-					noPlan = false
-					if plan["vigencia"] == body["vigencia"].(string) {
-						noVigencia = false
-						if plan["estado_plan_id"] == estadoPlanID {
+				if noPlan {
+					res["mensaje"] = "La unidad no tiene registros con el plan seleccionado o el tipo-plan no coincide con un Plan de Acción de Funcionamiento"
+					res["reporte"] = false
+				} else if noVigencia {
+					res["mensaje"] = "La unidad no cuenta con registros para la vigencia y el plan selecionados"
+					res["reporte"] = false
+				} else if noEstado {
+					res["mensaje"] = "La unidad no cuenta con plan avalado"
+					res["reporte"] = false
+				}
+			}
+		} else {
+			res["mensaje"] = "Ocurrio un error"
+		}
+	} else if body["categoria"].(string) == "Necesidades" {
+		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/plan?query=activo:true,tipo_plan_id:"+body["tipo_plan_id"].(string)+",vigencia:"+body["vigencia"].(string), &res1); err == nil {
+			request.LimpiezaRespuestaRefactor(res1, &resFilter)
+			if len(resFilter) == 0 {
+				res["mensaje"] = "No existen planes para la vigencia seleccionada"
+				res["reporte"] = false
+			} else {
+				noPlan := true
+				noEstado := true
+				for i := 0; i < len(resFilter); i++ {
+					if resFilter[i]["nombre"] == body["nombre"].(string) {
+						noPlan = false
+						if resFilter[i]["estado_plan_id"] == body["estado_plan_id"].(string) {
 							noEstado = false
 							res["mensaje"] = ""
 							res["reporte"] = true
@@ -103,54 +121,97 @@ func Validar(body map[string]interface{}) (res map[string]interface{}, outputErr
 						}
 					}
 				}
-			}
-			if noPlan {
-				res["mensaje"] = "La unidad no tiene registros con el plan seleccionado"
-				res["reporte"] = false
-			} else if noVigencia {
-				res["mensaje"] = "La unidad no cuenta con registros para la vigencia y el plan selecionados"
-				res["reporte"] = false
-			} else if noEstado {
-				res["mensaje"] = "La unidad no cuenta con plan avalado"
-				res["reporte"] = false
-			}
-		}
-	case "Necesidades", "Plan de acción general":
-		url := "http://" + beego.AppConfig.String("PlanesService") + "/plan?query=activo:true,tipo_plan_id:" + tipoPlanID + ",vigencia:" + body["vigencia"].(string)
-		if err := request.GetJson(url, &res1); err != nil {
-			outputError = errors.New("error Necesidades, Plan de acción general status : 404" + err.Error())
-		}
-		request.LimpiezaRespuestaRefactor(res1, &resFilter)
-		if len(resFilter) == 0 {
-			res["mensaje"] = "No existen planes para la vigencia seleccionada"
-			res["reporte"] = false
-		} else {
-			noPlan := true
-			noEstado := true
-			for _, plan := range resFilter {
-				if plan["nombre"] == body["nombre"].(string) {
-					noPlan = false
-					if plan["estado_plan_id"] == body["estado_plan_id"].(string) {
-						noEstado = false
-						res["mensaje"] = ""
-						res["reporte"] = true
-						break
-					}
+
+				if noPlan {
+					res["mensaje"] = "No existen registros con el plan seleccionado o el tipo-plan no coincide con un Plan de Acción de Funcionamiento"
+					res["reporte"] = false
+				} else if noEstado {
+					res["mensaje"] = "No existen registros con el estado y plan seleccionado"
+					res["reporte"] = false
 				}
 			}
-			if noPlan {
-				res["mensaje"] = "No existen registros con el plan seleccionado"
-				res["reporte"] = false
-			} else if noEstado {
-				res["mensaje"] = "No existen registros con el estado y plan seleccionado"
-				res["reporte"] = false
-			}
+		} else {
+			res["mensaje"] = "Ocurrio un error"
 		}
-	default:
+	} else if body["categoria"].(string) == "Plan_Accion_Unidad" {
+		// TODO: hacer validación de tipo de plan de acción para mostrar que los demás planes aún no están soportados por el sistema.
+		// "Por favor verificar el tipo de plan de acción. Actualmente NO soportado por el módulo de reportes."
+		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/plan?query=activo:true,tipo_plan_id:"+body["tipo_plan_id"].(string)+",dependencia_id:"+body["unidad_id"].(string), &res1); err == nil {
+			request.LimpiezaRespuestaRefactor(res1, &resFilter)
+			if len(resFilter) == 0 {
+				res["mensaje"] = "No existen planes para la unidad seleccionada"
+				res["reporte"] = false
+			} else {
+				noPlan := true
+				noVigencia := true
+				noEstado := true
+				for i := 0; i < len(resFilter); i++ {
+					if resFilter[i]["nombre"] == body["nombre"].(string) {
+						noPlan = false
+						if resFilter[i]["vigencia"] == body["vigencia"].(string) {
+							noVigencia = false
+							if resFilter[i]["estado_plan_id"] == body["estado_plan_id"].(string) {
+								noEstado = false
+								res["mensaje"] = ""
+								res["reporte"] = true
+								break
+							}
+						}
+					}
+				}
+
+				if noPlan {
+					res["mensaje"] = "La unidad no tiene registros con el plan seleccionado o el tipo-plan no coincide con un Plan de Acción de Funcionamiento"
+					res["reporte"] = false
+				} else if noVigencia {
+					res["mensaje"] = "La unidad no cuenta con registros para la vigencia y el plan selecionados"
+					res["reporte"] = false
+				} else if noEstado {
+					res["mensaje"] = "La unidad no cuenta con plan en el estado solicitado"
+					res["reporte"] = false
+				}
+			}
+		} else {
+			res["mensaje"] = "Ocurrió un error"
+		}
+	} else if body["categoria"].(string) == "Plan_Accion_General" {
+		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/plan?query=activo:true,tipo_plan_id:"+body["tipo_plan_id"].(string)+",vigencia:"+body["vigencia"].(string), &res1); err == nil {
+			request.LimpiezaRespuestaRefactor(res1, &resFilter)
+			if len(resFilter) == 0 {
+				res["mensaje"] = "No existen planes para la vigencia seleccionada"
+				res["reporte"] = false
+			} else {
+				noPlan := true
+				noEstado := true
+				for i := 0; i < len(resFilter); i++ {
+					if resFilter[i]["nombre"] == body["nombre"].(string) {
+						noPlan = false
+						if resFilter[i]["estado_plan_id"] == body["estado_plan_id"].(string) {
+							noEstado = false
+							res["mensaje"] = ""
+							res["reporte"] = true
+							break
+						}
+					}
+				}
+
+				if noPlan {
+					res["mensaje"] = "No existen registros con el plan seleccionado"
+					res["reporte"] = false
+				} else if noEstado {
+					res["mensaje"] = "No existen registros con el estado y plan seleccionado"
+					res["reporte"] = false
+				}
+			}
+		} else {
+			res["mensaje"] = "Ocurrio un error"
+		}
+	} else {
 		res["mensaje"] = "Categoria incorrecta"
 		res["reporte"] = false
 	}
-	return res, outputError
+
+  return res, outputError
 }
 
 func getIdEstadoAval() (string, error) {
