@@ -1465,7 +1465,7 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (map[st
 						if err := consolidadoExcelPlanAnual.SetSheetView(sheetName, -1, &excelize.ViewOptions{
 							ShowGridLines: &disable,
 						}); err != nil {
-							fmt.Println(err)
+							logs.Error(err)
 						}
 					}
 					consolidadoExcelPlanAnual.MergeCell(sheetName, "B1", "D1")
@@ -1824,7 +1824,7 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (map[st
 						if err := consolidadoExcelPlanAnual.SetSheetView(sheetName, -1, &excelize.ViewOptions{
 							ShowGridLines: &disable,
 						}); err != nil {
-							fmt.Println(err)
+							logs.Error(err)
 						}
 					}
 					consolidadoExcelPlanAnual.MergeCell(sheetName, "B1", "D1")
@@ -2065,11 +2065,11 @@ func ProcesarPlanAccionAnual(body map[string]interface{}, nombre string) (map[st
 
 			if err := consolidadoExcelPlanAnual.AddPicture("Actividades del plan", "B1", "static/img/UDEscudo2.png",
 				&excelize.GraphicOptions{ScaleX: 0.1, ScaleY: 0.1, Positioning: "oneCell", OffsetX: 10}); err != nil {
-				fmt.Println(err)
+				logs.Error(err)
 			}
 			if err := consolidadoExcelPlanAnual.AddPicture("Identificaciones", "B1", "static/img/UDEscudo2.png",
 				&excelize.GraphicOptions{ScaleX: 0.1, ScaleY: 0.1, Positioning: "absolute", OffsetX: 10}); err != nil {
-				fmt.Println(err)
+				logs.Error(err)
 			}
 
 			consolidadoExcelPlanAnual.SetColWidth("Actividades del plan", "A", "A", 2)
@@ -4653,7 +4653,7 @@ func ProcesarNecesidades(body map[string]interface{}, nombre string) (dataSend m
 
 func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (map[string]interface{}, error) {
 	var respuesta map[string]interface{}
-	var planes []map[string]interface{}
+	var versionesPlan []map[string]interface{}
 	var arregloPlanAnual []map[string]interface{}
 	var periodo []map[string]interface{}
 	var unidadNombre string
@@ -4663,6 +4663,10 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 	var res map[string]interface{}
 	var subgrupos []map[string]interface{}
 	var seguimientos []map[string]interface{}
+	var ultimoPlanAvalado map[string]interface{}
+
+	var reformulaciones []map[string]interface{}
+	var respuestaReformulacion []map[string]interface{}
 
 	excelArmonizacion := make([]map[string]interface{}, 0)
 
@@ -4674,24 +4678,35 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 			return nil, errors.New("error al procesar la peticion " + errId.Error())
 		}
 
-		url := "http://" + beego.AppConfig.String("PlanesService") + "/plan?query=activo:true,tipo_plan_id:" + body["tipo_plan_id"].(string) + ",vigencia:" + body["vigencia"].(string) + ",estado_plan_id:" + idEstadoAval + ",dependencia_id:" + body["unidad_id"].(string) + ",nombre:" + nombre
-		if err := request.GetJson(url, &respuesta); err != nil {
+		if err := request.GetJson("http://"+beego.AppConfig.String("FormulacionService")+"/formulacion/plan/versiones/"+body["unidad_id"].(string)+"/"+body["vigencia"].(string)+"/"+nombre, &respuesta); err != nil {
 			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
-		request.LimpiezaRespuestaRefactor(respuesta, &planes)
+		request.LimpiezaRespuestaRefactor(respuesta, &versionesPlan)
+		for posVersion := len(versionesPlan) - 1; posVersion > 0; posVersion-- {
+			if versionesPlan[posVersion]["estado_plan_id"] == idEstadoAval {
+				ultimoPlanAvalado = versionesPlan[posVersion]
+			}
+		}
+		if ultimoPlanAvalado["reformulacion"].(bool) {
+			for _, version := range versionesPlan {
+				if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/reformulacion?query=plan_id:"+version["_id"].(string), &respuesta); err == nil {
+					request.LimpiezaRespuestaRefactor(respuesta, &respuestaReformulacion)
+					reformulaciones = append(reformulaciones, respuestaReformulacion...)
+				}
+			}
+		}
+		fmt.Println("\n\nReformulacionesss")
+		formatdata.JsonPrint(reformulaciones)
 
-		if segs, err := seguimientoService.ObtenerSeguimientos(planes[len(planes)-1]["_id"].(string)); err != nil {
+		if auxSeguimientos, err := seguimientoService.ObtenerSeguimientos(ultimoPlanAvalado["_id"].(string)); err != nil {
 			return nil, errors.New("error al procesar la peticion " + err.Error())
 		} else {
-			seguimientos = segs
+			seguimientos = auxSeguimientos
 		}
 
-		fmt.Println("\n\nseguimientos")
-		formatdata.JsonPrint(seguimientos)
+		trimestres := reporteshelper.GetPeriodosPlan(body["vigencia"].(string), versionesPlan[0]["_id"].(string))
 
-		trimestres := reporteshelper.GetPeriodosPlan(body["vigencia"].(string), planes[0]["_id"].(string))
-
-		if len(planes) <= 0 {
+		if len(versionesPlan) <= 0 {
 			return nil, errors.New("error de longitud")
 		}
 
@@ -4720,7 +4735,6 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 		trimestreVacio := map[string]interface{}{"actividad": 0.0, "acumulado": 0.0, "denominador": 0.0, "meta": 0.0, "numerador": 0.0, "periodo": 0.0, "numeradorAcumulado": 0.0, "denominadorAcumulado": 0.0, "brecha": 0.0, "cualitativo": map[string]interface{}{"reporte": "", "dificultades": ""}}
 		for _, actividad := range evaluacion {
 			for auxTrim := len(trimestresConContenido) - 1; auxTrim >= 0; auxTrim-- {
-				fmt.Println(actividad["planId"].(string), trimestresConContenido[auxTrim]["_id"].(string))
 				seguimiento, err := seguimientoService.ConsultarSeguimiento(seguimientos[auxTrim]["plan_id"].(string), actividad["numero"].(string), trimestresConContenido[auxTrim]["_id"].(string))
 				if err == nil {
 					switch auxTrim {
@@ -4793,7 +4807,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 			return nil, errors.New("error de indexación")
 		}
 
-		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo?query=padre:"+planes[len(planes)-1]["_id"].(string)+"&fields=nombre,_id,hijos,activo", &res); err == nil {
+		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/subgrupo?query=padre:"+ultimoPlanAvalado["_id"].(string)+"&fields=nombre,_id,hijos,activo", &res); err == nil {
 			request.LimpiezaRespuestaRefactor(res, &subgrupos)
 
 			for i := 0; i < len(subgrupos); i++ {
@@ -5204,6 +5218,29 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 		consolidadoExcelEvaluacion.SetCellValue(sheetName, "BL19", "Gráfica")
 		consolidadoExcelEvaluacion.SetCellValue(sheetName, "BL21", "No.")
 		consolidadoExcelEvaluacion.SetCellValue(sheetName, "BM21", "Cumplimiento")
+
+		if ultimoPlanAvalado["reformulacion"].(bool) {
+			consolidadoExcelEvaluacion.MergeCell(sheetName, "R4", "S5")
+			consolidadoExcelEvaluacion.SetCellStyle(sheetName, "R4", "R4", styleTituloSB)
+			consolidadoExcelEvaluacion.SetCellValue(sheetName, "R4", "Reformulaciones realizadas")
+			for posRef := 0; posRef < len(reformulaciones); posRef++ {
+				consolidadoExcelEvaluacion.MergeCell(sheetName, "R"+fmt.Sprint(6+posRef), "S"+fmt.Sprint(6+posRef))
+				consolidadoExcelEvaluacion.SetCellStyle(sheetName, "R"+fmt.Sprint(6+posRef), "R"+fmt.Sprint(6+posRef), styleSombreadoSB)
+
+				textoTrimestre := "Trimestre "
+				switch string(reformulaciones[posRef]["periodo"].(string)[1]) {
+				case "1":
+					textoTrimestre += "I"
+				case "2":
+					textoTrimestre += "II"
+				case "3":
+					textoTrimestre += "III"
+				case "4":
+					textoTrimestre += "IV"
+				}
+				consolidadoExcelEvaluacion.SetCellValue(sheetName, "R"+fmt.Sprint(6+posRef), textoTrimestre)
+			}
+		}
 
 		indice := 23
 		indiceGraficos := 23
