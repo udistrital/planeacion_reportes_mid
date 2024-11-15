@@ -18,7 +18,7 @@
         "/desagregado": {
             "post": {
                 "tags": [
-                    "reportes"
+                    "github.com/udistrital/planeacion_reportes_mid/controllersReportesController"
                 ],
                 "description": "post Desagregado",
                 "operationId": "ReportesController.Desagregado",
@@ -49,7 +49,7 @@
         "/necesidades/{nombre}": {
             "post": {
                 "tags": [
-                    "reportes"
+                    "github.com/udistrital/planeacion_reportes_mid/controllersReportesController"
                 ],
                 "description": "post Necesidades",
                 "operationId": "ReportesController.Necesidades",
@@ -84,48 +84,10 @@
                 }
             }
         },
-        "/plan-anual/{nombre}": {
-            "post": {
-                "tags": [
-                    "reportes"
-                ],
-                "description": "post PlanAccionAnual",
-                "operationId": "ReportesController.PlanAccionAnual",
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "body",
-                        "description": "body for Plan content",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/{}"
-                        }
-                    },
-                    {
-                        "in": "path",
-                        "name": "nombre",
-                        "description": "The key for staticblock",
-                        "required": true,
-                        "type": "string"
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "schema": {
-                            "$ref": "#/definitions/models.Reportes"
-                        }
-                    },
-                    "403": {
-                        "description": ":plan_id is empty"
-                    }
-                }
-            }
-        },
         "/plan-anual-evaluacion/{nombre}": {
             "post": {
                 "tags": [
-                    "reportes"
+                    "github.com/udistrital/planeacion_reportes_mid/controllersReportesController"
                 ],
                 "description": "post PlanAccionEvaluacion",
                 "operationId": "ReportesController.PlanAccionEvaluacion",
@@ -163,7 +125,7 @@
         "/plan-anual-general/{nombre}": {
             "post": {
                 "tags": [
-                    "reportes"
+                    "github.com/udistrital/planeacion_reportes_mid/controllersReportesController"
                 ],
                 "description": "post PlanAccionAnualGeneral",
                 "operationId": "ReportesController.PlanAccionAnualGeneral",
@@ -198,10 +160,48 @@
                 }
             }
         },
+        "/plan-anual/{nombre}": {
+            "post": {
+                "tags": [
+                    "github.com/udistrital/planeacion_reportes_mid/controllersReportesController"
+                ],
+                "description": "post PlanAccionAnual",
+                "operationId": "ReportesController.PlanAccionAnual",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body for Plan content",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "nombre",
+                        "description": "The key for staticblock",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/models.Reportes"
+                        }
+                    },
+                    "403": {
+                        "description": ":plan_id is empty"
+                    }
+                }
+            }
+        },
         "/validacion": {
             "post": {
                 "tags": [
-                    "reportes"
+                    "github.com/udistrital/planeacion_reportes_mid/controllersReportesController"
                 ],
                 "description": "post ValidarReporte",
                 "operationId": "ReportesController.ValidarReporte",
@@ -239,7 +239,7 @@
     },
     "tags": [
         {
-            "name": "reportes",
+            "name": "github.com/udistrital/planeacion_reportes_mid/controllersReportesController",
             "description": "ReportesController operations for Reportes\n"
         }
     ]
