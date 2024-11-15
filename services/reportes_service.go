@@ -16,20 +16,20 @@ import (
 	evaluacionService "github.com/udistrital/planeacion_evaluacion_mid/services"
 	reporteshelper "github.com/udistrital/planeacion_reportes_mid/helpers"
 	seguimientoService "github.com/udistrital/planeacion_seguimiento_mid/services"
-	"github.com/udistrital/utils_oas/formatdata"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/xuri/excelize/v2"
 )
 
 const (
-	ColorBlanco      string = "FFFFFF"
-	ColorNegro       string = "000000"
-	ColorRojo        string = "CC0000"
-	ColorGrisClaro   string = "F2F2F2"
-	ColorGrisOscuro  string = "C2C2C2"
-	ColorGrisOscuro2 string = "D9D9D9"
-	ColorRosado      string = "FCE4D6"
-	CodigoAval       string = "A_SP"
+	ColorBlanco                 string = "FFFFFF"
+	ColorNegro                  string = "000000"
+	ColorRojo                   string = "CC0000"
+	ColorGrisClaro              string = "F2F2F2"
+	ColorGrisOscuro             string = "C2C2C2"
+	ColorGrisOscuro2            string = "D9D9D9"
+	ColorRosado                 string = "FCE4D6"
+	CodigoAval                  string = "A_SP"
+	CodigoReformulacionAprobada string = "RPA-A-SP"
 )
 
 type TotalDocentVal struct {
@@ -4668,6 +4668,9 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 	var reformulaciones []map[string]interface{}
 	var respuestaReformulacion []map[string]interface{}
 
+	var respuestaCodigoReformulacion []map[string]interface{}
+	var parametroReformulacionAprobada map[string]interface{}
+
 	excelArmonizacion := make([]map[string]interface{}, 0)
 
 	consolidadoExcelEvaluacion := excelize.NewFile()
@@ -4682,21 +4685,28 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 			return nil, errors.New("error al procesar la peticion " + err.Error())
 		}
 		request.LimpiezaRespuestaRefactor(respuesta, &versionesPlan)
+		hayPlanesReformulados := false
 		for posVersion := len(versionesPlan) - 1; posVersion > 0; posVersion-- {
 			if versionesPlan[posVersion]["estado_plan_id"] == idEstadoAval {
 				ultimoPlanAvalado = versionesPlan[posVersion]
 			}
+			if versionesPlan[posVersion]["reformulacion"].(bool) {
+				hayPlanesReformulados = versionesPlan[posVersion]["reformulacion"].(bool)
+			}
 		}
-		if ultimoPlanAvalado["reformulacion"].(bool) {
+		if hayPlanesReformulados {
 			for _, version := range versionesPlan {
-				if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/reformulacion?query=plan_id:"+version["_id"].(string), &respuesta); err == nil {
+				if err := request.GetJson("http://"+beego.AppConfig.String("ParametrosService")+"/parametro?query=CodigoAbreviacion:"+CodigoReformulacionAprobada+",Activo:true", &respuesta); err == nil {
+					request.LimpiezaRespuestaRefactor(respuesta, &respuestaCodigoReformulacion)
+					parametroReformulacionAprobada = respuestaCodigoReformulacion[0]
+				}
+
+				if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/reformulacion?query=plan_id:"+version["_id"].(string)+",estado_id:"+strconv.FormatFloat(parametroReformulacionAprobada["Id"].(float64), 'f', 0, 64), &respuesta); err == nil {
 					request.LimpiezaRespuestaRefactor(respuesta, &respuestaReformulacion)
 					reformulaciones = append(reformulaciones, respuestaReformulacion...)
 				}
 			}
 		}
-		fmt.Println("\n\nReformulacionesss")
-		formatdata.JsonPrint(reformulaciones)
 
 		if auxSeguimientos, err := seguimientoService.ObtenerSeguimientos(ultimoPlanAvalado["_id"].(string)); err != nil {
 			return nil, errors.New("error al procesar la peticion " + err.Error())
@@ -5219,7 +5229,7 @@ func ProcesarPlanAccionEvaluacion(body map[string]interface{}, nombre string) (m
 		consolidadoExcelEvaluacion.SetCellValue(sheetName, "BL21", "No.")
 		consolidadoExcelEvaluacion.SetCellValue(sheetName, "BM21", "Cumplimiento")
 
-		if ultimoPlanAvalado["reformulacion"].(bool) {
+		if len(reformulaciones) > 0 {
 			consolidadoExcelEvaluacion.MergeCell(sheetName, "R4", "S5")
 			consolidadoExcelEvaluacion.SetCellStyle(sheetName, "R4", "R4", styleTituloSB)
 			consolidadoExcelEvaluacion.SetCellValue(sheetName, "R4", "Reformulaciones realizadas")
