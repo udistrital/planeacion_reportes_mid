@@ -71,7 +71,7 @@ func Validar(body map[string]interface{}) (res map[string]interface{}, outputErr
 	var resFilter []map[string]interface{}
 	res = make(map[string]interface{})
 
-  if body["categoria"].(string) == "Evaluacion" {
+	if body["categoria"].(string) == "Evaluacion" {
 		if err := request.GetJson("http://"+beego.AppConfig.String("PlanesService")+"/plan?query=activo:true,tipo_plan_id:"+body["tipo_plan_id"].(string)+",dependencia_id:"+body["unidad_id"].(string), &res1); err == nil {
 			request.LimpiezaRespuestaRefactor(res1, &resFilter)
 
@@ -221,7 +221,7 @@ func Validar(body map[string]interface{}) (res map[string]interface{}, outputErr
 		res["reporte"] = false
 	}
 
-  return res, outputError
+	return res, outputError
 }
 
 func getIdEstadoAval() (string, error) {
